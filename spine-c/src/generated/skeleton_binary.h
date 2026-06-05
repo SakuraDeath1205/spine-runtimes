@@ -14,11 +14,10 @@ SPINE_C_API spine_skeleton_binary spine_skeleton_binary_create2(spine_attachment
 
 SPINE_C_API void spine_skeleton_binary_dispose(spine_skeleton_binary self);
 
-SPINE_C_API /*@null*/ spine_skeleton_data spine_skeleton_binary_read_skeleton_data(spine_skeleton_binary self, /*@null*/ const unsigned char *binary,
-																				   int length);
-SPINE_C_API /*@null*/ spine_skeleton_data spine_skeleton_binary_read_skeleton_data_file(spine_skeleton_binary self, const char *path);
+SPINE_C_API /*@null*/ spine_skeleton_data spine_skeleton_binary_read_skeleton_data(spine_skeleton_binary self, /*@null*/ const unsigned char * binary, int length);
+SPINE_C_API /*@null*/ spine_skeleton_data spine_skeleton_binary_read_skeleton_data_file(spine_skeleton_binary self, const char * path);
 SPINE_C_API void spine_skeleton_binary_set_scale(spine_skeleton_binary self, float scale);
-SPINE_C_API const char *spine_skeleton_binary_get_error(spine_skeleton_binary self);
+SPINE_C_API const char * spine_skeleton_binary_get_error(spine_skeleton_binary self);
 
 #ifdef __cplusplus
 }

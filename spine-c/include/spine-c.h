@@ -176,4 +176,4 @@
 #include "../src/generated/update.h"
 #include "../src/generated/vertex_attachment.h"
 
-#endif// SPINE_C_H
+#endif // SPINE_C_H

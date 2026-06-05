@@ -14,8 +14,7 @@ SPINE_C_API spine_from_scale_x spine_from_scale_x_create(void);
 SPINE_C_API void spine_from_scale_x_dispose(spine_from_scale_x self);
 
 SPINE_C_API spine_rtti spine_from_scale_x_get_rtti(spine_from_scale_x self);
-SPINE_C_API float spine_from_scale_x_value(spine_from_scale_x self, spine_skeleton skeleton, spine_bone_pose source, bool local,
-										   /*@null*/ float *offsets);
+SPINE_C_API float spine_from_scale_x_value(spine_from_scale_x self, spine_skeleton skeleton, spine_bone_pose source, bool local, /*@null*/ float * offsets);
 SPINE_C_API spine_rtti spine_from_scale_x_rtti(void);
 
 #ifdef __cplusplus

@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-SPINE_C_API spine_transform_constraint_data spine_transform_constraint_data_create(const char *name);
+SPINE_C_API spine_transform_constraint_data spine_transform_constraint_data_create(const char * name);
 
 SPINE_C_API void spine_transform_constraint_data_dispose(spine_transform_constraint_data self);
 
@@ -84,7 +84,7 @@ SPINE_C_API spine_array_from_property spine_transform_constraint_data_get_proper
 /**
  * Resolve ambiguity by forwarding to PosedData's implementation
  */
-SPINE_C_API const char *spine_transform_constraint_data_get_name(spine_transform_constraint_data self);
+SPINE_C_API const char * spine_transform_constraint_data_get_name(spine_transform_constraint_data self);
 SPINE_C_API bool spine_transform_constraint_data_get_skin_required(spine_transform_constraint_data self);
 /**
  * The setup pose that most animations are relative to.

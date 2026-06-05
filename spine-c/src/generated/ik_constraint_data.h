@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-SPINE_C_API spine_ik_constraint_data spine_ik_constraint_data_create(const char *name);
+SPINE_C_API spine_ik_constraint_data spine_ik_constraint_data_create(const char * name);
 
 SPINE_C_API void spine_ik_constraint_data_dispose(spine_ik_constraint_data self);
 
@@ -34,7 +34,7 @@ SPINE_C_API void spine_ik_constraint_data_set_scale_y_mode(spine_ik_constraint_d
 /**
  * Resolve ambiguity by forwarding to PosedData's implementation
  */
-SPINE_C_API const char *spine_ik_constraint_data_get_name(spine_ik_constraint_data self);
+SPINE_C_API const char * spine_ik_constraint_data_get_name(spine_ik_constraint_data self);
 SPINE_C_API bool spine_ik_constraint_data_get_skin_required(spine_ik_constraint_data self);
 /**
  * The setup pose that most animations are relative to.

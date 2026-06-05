@@ -14,8 +14,7 @@ SPINE_C_API spine_from_shear_y spine_from_shear_y_create(void);
 SPINE_C_API void spine_from_shear_y_dispose(spine_from_shear_y self);
 
 SPINE_C_API spine_rtti spine_from_shear_y_get_rtti(spine_from_shear_y self);
-SPINE_C_API float spine_from_shear_y_value(spine_from_shear_y self, spine_skeleton skeleton, spine_bone_pose source, bool local,
-										   /*@null*/ float *offsets);
+SPINE_C_API float spine_from_shear_y_value(spine_from_shear_y self, spine_skeleton skeleton, spine_bone_pose source, bool local, /*@null*/ float * offsets);
 SPINE_C_API spine_rtti spine_from_shear_y_rtti(void);
 
 #ifdef __cplusplus

@@ -191,4 +191,4 @@ SPINE_OPAQUE_TYPE(spine_vertex_attachment)
 }
 #endif
 
-#endif// SPINE_C_TYPES_H
+#endif // SPINE_C_TYPES_H

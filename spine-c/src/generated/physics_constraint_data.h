@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-SPINE_C_API spine_physics_constraint_data spine_physics_constraint_data_create(const char *name);
+SPINE_C_API spine_physics_constraint_data spine_physics_constraint_data_create(const char * name);
 
 SPINE_C_API void spine_physics_constraint_data_dispose(spine_physics_constraint_data self);
 
@@ -101,7 +101,7 @@ SPINE_C_API void spine_physics_constraint_data_set_mix_global(spine_physics_cons
 /**
  * Resolve ambiguity by forwarding to PosedData's implementation
  */
-SPINE_C_API const char *spine_physics_constraint_data_get_name(spine_physics_constraint_data self);
+SPINE_C_API const char * spine_physics_constraint_data_get_name(spine_physics_constraint_data self);
 SPINE_C_API bool spine_physics_constraint_data_get_skin_required(spine_physics_constraint_data self);
 /**
  * The setup pose that most animations are relative to.

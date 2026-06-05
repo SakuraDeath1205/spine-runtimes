@@ -26,7 +26,7 @@ SPINE_C_API void spine_animation_state_data_set_default_mix(spine_animation_stat
 /**
  * Sets a mix duration by animation names.
  */
-SPINE_C_API void spine_animation_state_data_set_mix_1(spine_animation_state_data self, const char *fromName, const char *toName, float duration);
+SPINE_C_API void spine_animation_state_data_set_mix_1(spine_animation_state_data self, const char * fromName, const char * toName, float duration);
 /**
  * Sets a mix duration when changing from the specified animation to the other.
  * See TrackEntry.MixDuration.

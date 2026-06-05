@@ -19,8 +19,7 @@ SPINE_C_API float spine_to_property_mix(spine_to_property self, spine_transform_
 /**
  * Applies the value to this property.
  */
-SPINE_C_API void spine_to_property_apply(spine_to_property self, spine_skeleton skeleton, spine_transform_constraint_pose pose, spine_bone_pose bone,
-										 float value, bool local, bool additive);
+SPINE_C_API void spine_to_property_apply(spine_to_property self, spine_skeleton skeleton, spine_transform_constraint_pose pose, spine_bone_pose bone, float value, bool local, bool additive);
 SPINE_C_API spine_rtti spine_to_property_rtti(void);
 SPINE_C_API float spine_to_property_get__offset(spine_to_property self);
 SPINE_C_API void spine_to_property_set__offset(spine_to_property self, float value);

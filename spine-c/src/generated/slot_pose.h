@@ -55,6 +55,11 @@ SPINE_C_API void spine_slot_pose_set_sequence_index(spine_slot_pose self, int se
  * See VertexAttachment::computeWorldVertices() and DeformTimeline.
  */
 SPINE_C_API spine_array_float spine_slot_pose_get_deform(spine_slot_pose self);
+/**
+ * aim to bleach origin color of the slot
+ */
+SPINE_C_API float spine_slot_pose_get_bleach(spine_slot_pose self);
+SPINE_C_API void spine_slot_pose_set_bleach(spine_slot_pose self, float bleach);
 
 #ifdef __cplusplus
 }

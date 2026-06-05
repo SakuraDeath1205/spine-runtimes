@@ -41,7 +41,8 @@ extension RenderCommand {
         guard let indicesPtr = indices,
             let positionsPtr = positions,
             let uvsPtr = uvs,
-            let colorsPtr = colors
+            let colorsPtr = colors,
+            let bleachesPtr = bleaches
         else {
             return vertices
         }
@@ -49,6 +50,7 @@ extension RenderCommand {
         let positionsArray = Array(UnsafeBufferPointer(start: positionsPtr, count: numVerts * 2))
         let uvsArray = Array(UnsafeBufferPointer(start: uvsPtr, count: numVerts * 2))
         let colorsArray = Array(UnsafeBufferPointer(start: colorsPtr, count: numVerts))
+        let bleachesArray = Array(UnsafeBufferPointer(start: bleachesPtr, count: numVerts))
         vertices.reserveCapacity(numInds)
         for i in 0..<numInds {
             let index = Int(indicesArray[i])
@@ -57,10 +59,12 @@ extension RenderCommand {
             let position = SIMD2<Float>(positionsArray[xIndex], positionsArray[yIndex])
             let uv = SIMD2<Float>(uvsArray[xIndex], uvsArray[yIndex])
             let color = extractRGBA(from: colorsArray[index])
+            let bleach = bleachesArray[index]
             let vertex = SpineVertex(
                 position: position,
                 color: color,
-                uv: uv
+                uv: uv,
+                bleach: bleach
             )
             vertices.append(vertex)
         }

@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-SPINE_C_API spine_path_constraint_data spine_path_constraint_data_create(const char *name);
+SPINE_C_API spine_path_constraint_data spine_path_constraint_data_create(const char * name);
 
 SPINE_C_API void spine_path_constraint_data_dispose(spine_path_constraint_data self);
 
@@ -47,7 +47,7 @@ SPINE_C_API void spine_path_constraint_data_set_offset_rotation(spine_path_const
 /**
  * Resolve ambiguity by forwarding to PosedData's implementation
  */
-SPINE_C_API const char *spine_path_constraint_data_get_name(spine_path_constraint_data self);
+SPINE_C_API const char * spine_path_constraint_data_get_name(spine_path_constraint_data self);
 SPINE_C_API bool spine_path_constraint_data_get_skin_required(spine_path_constraint_data self);
 /**
  * The setup pose that most animations are relative to.

@@ -21,7 +21,7 @@ SPINE_C_API spine_color spine_color_add_1(spine_color self, float _r, float _g, 
 SPINE_C_API spine_color spine_color_add_2(spine_color self, float _r, float _g, float _b);
 SPINE_C_API spine_color spine_color_add_3(spine_color self, spine_color other);
 SPINE_C_API spine_color spine_color_clamp(spine_color self);
-SPINE_C_API float spine_color_parse_hex(/*@null*/ const char *value, size_t index);
+SPINE_C_API float spine_color_parse_hex(/*@null*/ const char * value, size_t index);
 /**
  * Convert packed RGBA8888 integer to Color
  */

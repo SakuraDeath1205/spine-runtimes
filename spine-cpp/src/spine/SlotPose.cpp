@@ -33,7 +33,7 @@
 
 using namespace spine;
 
-SlotPose::SlotPose() : _color(1, 1, 1, 1), _darkColor(0, 0, 0, 0), _hasDarkColor(false), _attachment(nullptr), _sequenceIndex(0) {
+SlotPose::SlotPose() : _color(1, 1, 1, 1), _darkColor(0, 0, 0, 0), _hasDarkColor(false), _attachment(nullptr), _sequenceIndex(0), _bleach(0) {
 }
 
 SlotPose::~SlotPose() {
@@ -47,6 +47,7 @@ void SlotPose::set(SlotPose &pose) {
 	_sequenceIndex = pose._sequenceIndex;
 	_deform.clear();
 	_deform.addAll(pose._deform);
+	_bleach = pose._bleach;
 }
 
 Color &SlotPose::getColor() {
@@ -88,4 +89,14 @@ void SlotPose::setSequenceIndex(int sequenceIndex) {
 
 Array<float> &SlotPose::getDeform() {
 	return _deform;
+}
+
+float SlotPose::getBleach() {
+    return _bleach;
+}
+
+void SlotPose::setBleach(float bleach) {
+    if (bleach < 0) bleach = 0;
+    if (bleach > 1) bleach = 1;
+    _bleach = bleach;
 }

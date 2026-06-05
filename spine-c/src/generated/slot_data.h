@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-SPINE_C_API spine_slot_data spine_slot_data_create(int index, const char *name, spine_bone_data boneData);
+SPINE_C_API spine_slot_data spine_slot_data_create(int index, const char * name, spine_bone_data boneData);
 
 SPINE_C_API void spine_slot_data_dispose(spine_slot_data self);
 
@@ -21,12 +21,12 @@ SPINE_C_API int spine_slot_data_get_index(spine_slot_data self);
  * The bone this slot belongs to.
  */
 SPINE_C_API spine_bone_data spine_slot_data_get_bone_data(spine_slot_data self);
-SPINE_C_API void spine_slot_data_set_attachment_name(spine_slot_data self, const char *attachmentName);
+SPINE_C_API void spine_slot_data_set_attachment_name(spine_slot_data self, const char * attachmentName);
 /**
  * The name of the attachment that is visible for this slot in the setup pose,
  * or empty if no attachment is visible.
  */
-SPINE_C_API const char *spine_slot_data_get_attachment_name(spine_slot_data self);
+SPINE_C_API const char * spine_slot_data_get_attachment_name(spine_slot_data self);
 /**
  * The blend mode for drawing the slot's attachment.
  */
@@ -42,7 +42,7 @@ SPINE_C_API void spine_slot_data_set_visible(spine_slot_data self, bool visible)
  * The setup pose that most animations are relative to.
  */
 SPINE_C_API spine_slot_pose spine_slot_data_get_setup_pose(spine_slot_data self);
-SPINE_C_API const char *spine_slot_data_get_name(spine_slot_data self);
+SPINE_C_API const char * spine_slot_data_get_name(spine_slot_data self);
 /**
  * When true, Skeleton::updateWorldTransform(Physics) only updates this
  * constraint if the Skeleton::getSkin() contains this constraint.

@@ -130,6 +130,17 @@ public class SlotPose: NSObject {
         return ArrayFloat(fromPointer: result!)
     }
 
+    /// aim to bleach origin color of the slot
+    public var bleach: Float {
+        get {
+            let result = spine_slot_pose_get_bleach(_ptr.assumingMemoryBound(to: spine_slot_pose_wrapper.self))
+        return result
+        }
+        set {
+            spine_slot_pose_set_bleach(_ptr.assumingMemoryBound(to: spine_slot_pose_wrapper.self), newValue)
+        }
+    }
+
     public func set(_ pose: SlotPose) {
         spine_slot_pose_set(_ptr.assumingMemoryBound(to: spine_slot_pose_wrapper.self), pose._ptr.assumingMemoryBound(to: spine_slot_pose_wrapper.self))
     }

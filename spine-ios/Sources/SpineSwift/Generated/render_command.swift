@@ -93,6 +93,11 @@ public class RenderCommand: NSObject {
         return result.map { RenderCommand(fromPointer: $0) }
     }
 
+    public var bleaches: UnsafeMutablePointer<Float>? {
+        let result = spine_render_command_get_bleaches(_ptr.assumingMemoryBound(to: spine_render_command_wrapper.self))
+        return result
+    }
+
     public func dispose() {
         spine_render_command_dispose(_ptr.assumingMemoryBound(to: spine_render_command_wrapper.self))
     }

@@ -48,6 +48,7 @@ namespace spine {
 		BlendMode blendMode;
 		void *texture;
 		RenderCommand *next;
+		float *bleaches;
 	};
 
 	class SP_API SkeletonRenderer : public SpineObject {

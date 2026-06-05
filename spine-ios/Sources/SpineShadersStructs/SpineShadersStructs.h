@@ -46,6 +46,7 @@ typedef struct {
 	simd_float2 position;
 	simd_float4 color;
 	simd_float2 uv;
+	float bleach;
 } SpineVertex;
 
 typedef struct {

@@ -27,8 +27,7 @@ SPINE_C_API spine_rtti spine_timeline_get_rtti(spine_timeline self);
  * @param out True when the animation is mixing out, else it is mixing in. Used by timelines that perform instant transitions.
  * @param appliedPose True to modify getAppliedPose(), else getPose() is modified.
  */
-SPINE_C_API void spine_timeline_apply(spine_timeline self, spine_skeleton skeleton, float lastTime, float time, /*@null*/ spine_array_event events,
-									  float alpha, spine_mix_from from, bool add, bool out, bool appliedPose);
+SPINE_C_API void spine_timeline_apply(spine_timeline self, spine_skeleton skeleton, float lastTime, float time, /*@null*/ spine_array_event events, float alpha, spine_mix_from from, bool add, bool out, bool appliedPose);
 /**
  * True if this timeline supports additive blending.
  */

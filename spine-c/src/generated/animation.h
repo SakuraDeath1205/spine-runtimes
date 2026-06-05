@@ -12,7 +12,7 @@ extern "C" {
 /**
  * Creates a new animation. The timelines must be set before use.
  */
-SPINE_C_API spine_animation spine_animation_create(const char *name);
+SPINE_C_API spine_animation spine_animation_create(const char * name);
 
 SPINE_C_API void spine_animation_dispose(spine_animation self);
 
@@ -56,12 +56,11 @@ SPINE_C_API void spine_animation_set_duration(spine_animation self, float inValu
  * @param out True when the animation is mixing out, else it is mixing in. Used by timelines that perform instant transitions.
  * @param appliedPose True to modify getAppliedPose(), else the unconstrained pose is modified.
  */
-SPINE_C_API void spine_animation_apply(spine_animation self, spine_skeleton skeleton, float lastTime, float time, bool loop,
-									   /*@null*/ spine_array_event events, float alpha, spine_mix_from from, bool add, bool out, bool appliedPose);
+SPINE_C_API void spine_animation_apply(spine_animation self, spine_skeleton skeleton, float lastTime, float time, bool loop, /*@null*/ spine_array_event events, float alpha, spine_mix_from from, bool add, bool out, bool appliedPose);
 /**
  * The animation's name, which is unique across all animations in the skeleton.
  */
-SPINE_C_API const char *spine_animation_get_name(spine_animation self);
+SPINE_C_API const char * spine_animation_get_name(spine_animation self);
 /**
  * The Skeleton::getBones() indices affected by this animation.
  *

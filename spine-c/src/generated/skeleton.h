@@ -48,7 +48,7 @@ SPINE_C_API /*@null*/ spine_bone spine_skeleton_get_root_bone(spine_skeleton sel
  *
  * @return May be NULL.
  */
-SPINE_C_API /*@null*/ spine_bone spine_skeleton_find_bone(spine_skeleton self, const char *boneName);
+SPINE_C_API /*@null*/ spine_bone spine_skeleton_find_bone(spine_skeleton self, const char * boneName);
 /**
  * The skeleton's slots in setup pose order. To change the order use
  * DrawOrder::getPose(). For rendering use DrawOrder::getAppliedPose().
@@ -58,7 +58,7 @@ SPINE_C_API spine_array_slot spine_skeleton_get_slots(spine_skeleton self);
  *
  * @return May be NULL.
  */
-SPINE_C_API /*@null*/ spine_slot spine_skeleton_find_slot(spine_skeleton self, const char *slotName);
+SPINE_C_API /*@null*/ spine_slot spine_skeleton_find_slot(spine_skeleton self, const char * slotName);
 /**
  * The skeleton's draw order. Use DrawOrder::getAppliedPose() for rendering and
  * DrawOrder::getPose() for changing the draw order.
@@ -68,7 +68,7 @@ SPINE_C_API /*@null*/ spine_skin spine_skeleton_get_skin(spine_skeleton self);
 /**
  * Sets a skin by name (see setSkin).
  */
-SPINE_C_API void spine_skeleton_set_skin_1(spine_skeleton self, const char *skinName);
+SPINE_C_API void spine_skeleton_set_skin_1(spine_skeleton self, const char * skinName);
 /**
  * Sets the skin used to look up attachments before looking in
  * SkeletonData::getDefaultSkin(). If the skin is changed, updateCache() is
@@ -95,7 +95,7 @@ SPINE_C_API void spine_skeleton_set_skin_2(spine_skeleton self, /*@null*/ spine_
  *
  * @return May be NULL.
  */
-SPINE_C_API /*@null*/ spine_attachment spine_skeleton_get_attachment_1(spine_skeleton self, const char *slotName, const char *placeholder);
+SPINE_C_API /*@null*/ spine_attachment spine_skeleton_get_attachment_1(spine_skeleton self, const char * slotName, const char * placeholder);
 /**
  * Finds an attachment by looking in getSkin() and
  * SkeletonData::getDefaultSkin() using the slot index and skin placeholder
@@ -104,7 +104,7 @@ SPINE_C_API /*@null*/ spine_attachment spine_skeleton_get_attachment_1(spine_ske
  *
  * @return May be NULL.
  */
-SPINE_C_API /*@null*/ spine_attachment spine_skeleton_get_attachment_2(spine_skeleton self, int slotIndex, const char *placeholder);
+SPINE_C_API /*@null*/ spine_attachment spine_skeleton_get_attachment_2(spine_skeleton self, int slotIndex, const char * placeholder);
 /**
  * A convenience method to set an attachment by finding the slot with
  * findSlot(String), finding the attachment with getAttachment(int, String),
@@ -112,7 +112,7 @@ SPINE_C_API /*@null*/ spine_attachment spine_skeleton_get_attachment_2(spine_ske
  *
  * @param placeholder May be empty.
  */
-SPINE_C_API void spine_skeleton_set_attachment(spine_skeleton self, const char *slotName, const char *placeholder);
+SPINE_C_API void spine_skeleton_set_attachment(spine_skeleton self, const char * slotName, const char * placeholder);
 SPINE_C_API spine_array_constraint spine_skeleton_get_constraints(spine_skeleton self);
 /**
  * The skeleton's physics constraints.
@@ -127,7 +127,7 @@ SPINE_C_API spine_array_physics_constraint spine_skeleton_get_physics_constraint
  * @param outWidth The width of the AABB
  * @param outHeight The height of the AABB.
  */
-SPINE_C_API void spine_skeleton_get_bounds_1(spine_skeleton self, float *outX, float *outY, float *outWidth, float *outHeight);
+SPINE_C_API void spine_skeleton_get_bounds_1(spine_skeleton self, float * outX, float * outY, float * outWidth, float * outHeight);
 /**
  * Returns the axis aligned bounding box (AABB) of the region and mesh
  * attachments for the applied pose.
@@ -139,8 +139,7 @@ SPINE_C_API void spine_skeleton_get_bounds_1(spine_skeleton self, float *outX, f
  * @param outVertexBuffer Reference to hold an array of floats. This method will assign it with new floats as needed.
  * @param clipping Pointer to a SkeletonClipping instance or NULL. If a clipper is given, clipping attachments will be taken into account.
  */
-SPINE_C_API void spine_skeleton_get_bounds_2(spine_skeleton self, float *outX, float *outY, float *outWidth, float *outHeight,
-											 spine_array_float outVertexBuffer, /*@null*/ spine_skeleton_clipping clipping);
+SPINE_C_API void spine_skeleton_get_bounds_2(spine_skeleton self, float * outX, float * outY, float * outWidth, float * outHeight, spine_array_float outVertexBuffer, /*@null*/ spine_skeleton_clipping clipping);
 SPINE_C_API spine_color spine_skeleton_get_color(spine_skeleton self);
 SPINE_C_API void spine_skeleton_set_color_1(spine_skeleton self, spine_color color);
 SPINE_C_API void spine_skeleton_set_color_2(spine_skeleton self, float r, float g, float b, float a);
@@ -154,7 +153,7 @@ SPINE_C_API void spine_skeleton_set_x(spine_skeleton self, float inValue);
 SPINE_C_API float spine_skeleton_get_y(spine_skeleton self);
 SPINE_C_API void spine_skeleton_set_y(spine_skeleton self, float inValue);
 SPINE_C_API void spine_skeleton_set_position(spine_skeleton self, float x, float y);
-SPINE_C_API void spine_skeleton_get_position(spine_skeleton self, float *x, float *y);
+SPINE_C_API void spine_skeleton_get_position(spine_skeleton self, float * x, float * y);
 /**
  * The x component of a vector that defines the direction
  * PhysicsConstraintPose::getWind() is applied.

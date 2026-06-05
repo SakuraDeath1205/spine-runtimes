@@ -95,20 +95,20 @@ SPINE_C_API float spine_bone_pose_get_world_scale_y(spine_bone_pose self);
 /**
  * Transforms a point from world coordinates to the bone's local coordinates.
  */
-SPINE_C_API void spine_bone_pose_world_to_local(spine_bone_pose self, float worldX, float worldY, float *outLocalX, float *outLocalY);
+SPINE_C_API void spine_bone_pose_world_to_local(spine_bone_pose self, float worldX, float worldY, float * outLocalX, float * outLocalY);
 /**
  * Transforms a point from the bone's local coordinates to world coordinates.
  */
-SPINE_C_API void spine_bone_pose_local_to_world(spine_bone_pose self, float localX, float localY, float *outWorldX, float *outWorldY);
+SPINE_C_API void spine_bone_pose_local_to_world(spine_bone_pose self, float localX, float localY, float * outWorldX, float * outWorldY);
 /**
  * Transforms a point from world coordinates to the parent bone's local
  * coordinates.
  */
-SPINE_C_API void spine_bone_pose_world_to_parent(spine_bone_pose self, float worldX, float worldY, float *outParentX, float *outParentY);
+SPINE_C_API void spine_bone_pose_world_to_parent(spine_bone_pose self, float worldX, float worldY, float * outParentX, float * outParentY);
 /**
  * Transforms a point from the parent bone's coordinates to world coordinates.
  */
-SPINE_C_API void spine_bone_pose_parent_to_world(spine_bone_pose self, float parentX, float parentY, float *outWorldX, float *outWorldY);
+SPINE_C_API void spine_bone_pose_parent_to_world(spine_bone_pose self, float parentX, float parentY, float * outWorldX, float * outWorldY);
 /**
  * Transforms a world rotation to a local rotation.
  */

@@ -49,8 +49,7 @@ SPINE_C_API void spine_animation_state_clear_track(spine_animation_state self, s
  *
  * See setAnimation(int, Animation, bool).
  */
-SPINE_C_API spine_track_entry spine_animation_state_set_animation_1(spine_animation_state self, size_t trackIndex, const char *animationName,
-																	bool loop);
+SPINE_C_API spine_track_entry spine_animation_state_set_animation_1(spine_animation_state self, size_t trackIndex, const char * animationName, bool loop);
 /**
  * Sets the current animation for a track, discarding any queued animations.
  *
@@ -61,15 +60,13 @@ SPINE_C_API spine_track_entry spine_animation_state_set_animation_1(spine_animat
  *
  * @return A track entry to allow further customization of animation playback. References to the track entry must not be kept after AnimationState.Dispose.
  */
-SPINE_C_API spine_track_entry spine_animation_state_set_animation_2(spine_animation_state self, size_t trackIndex, spine_animation animation,
-																	bool loop);
+SPINE_C_API spine_track_entry spine_animation_state_set_animation_2(spine_animation_state self, size_t trackIndex, spine_animation animation, bool loop);
 /**
  * Queues an animation by name.
  *
  * See addAnimation(int, Animation, bool, float).
  */
-SPINE_C_API spine_track_entry spine_animation_state_add_animation_1(spine_animation_state self, size_t trackIndex, const char *animationName,
-																	bool loop, float delay);
+SPINE_C_API spine_track_entry spine_animation_state_add_animation_1(spine_animation_state self, size_t trackIndex, const char * animationName, bool loop, float delay);
 /**
  * Adds an animation to be played delay seconds after the current or last queued
  * animation for a track. If the track has no entries, this is equivalent to
@@ -79,8 +76,7 @@ SPINE_C_API spine_track_entry spine_animation_state_add_animation_1(spine_animat
  *
  * @return A track entry to allow further customization of animation playback. References to the track entry must not be kept after AnimationState.Dispose
  */
-SPINE_C_API spine_track_entry spine_animation_state_add_animation_2(spine_animation_state self, size_t trackIndex, spine_animation animation,
-																	bool loop, float delay);
+SPINE_C_API spine_track_entry spine_animation_state_add_animation_2(spine_animation_state self, size_t trackIndex, spine_animation animation, bool loop, float delay);
 /**
  * Sets an empty animation for a track, discarding any queued animations, and
  * sets the track entry's TrackEntry::getMixDuration(). An empty animation has
@@ -119,8 +115,7 @@ SPINE_C_API spine_track_entry spine_animation_state_set_empty_animation(spine_an
  *
  * @return A track entry to allow further customization of animation playback. References to the track entry must not be kept after the AnimationStateListener::dispose(TrackEntry) event occurs.
  */
-SPINE_C_API spine_track_entry spine_animation_state_add_empty_animation(spine_animation_state self, size_t trackIndex, float mixDuration,
-																		float delay);
+SPINE_C_API spine_track_entry spine_animation_state_add_empty_animation(spine_animation_state self, size_t trackIndex, float mixDuration, float delay);
 /**
  * Sets an empty animation for every track, discarding any queued animations,
  * and mixes to it over the specified mix duration.
@@ -155,7 +150,7 @@ SPINE_C_API void spine_animation_state_enable_queue(spine_animation_state self);
 SPINE_C_API void spine_animation_state_set_manual_track_entry_disposal(spine_animation_state self, bool inValue);
 SPINE_C_API bool spine_animation_state_get_manual_track_entry_disposal(spine_animation_state self);
 SPINE_C_API void spine_animation_state_dispose_track_entry(spine_animation_state self, /*@null*/ spine_track_entry entry);
-SPINE_C_API /*@null*/ void *spine_animation_state_get_renderer_object(spine_animation_state self);
+SPINE_C_API /*@null*/ void * spine_animation_state_get_renderer_object(spine_animation_state self);
 
 #ifdef __cplusplus
 }

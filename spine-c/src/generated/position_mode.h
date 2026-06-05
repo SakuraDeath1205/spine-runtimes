@@ -6,8 +6,8 @@ extern "C" {
 #endif
 
 typedef enum spine_position_mode {
-	SPINE_POSITION_MODE_FIXED = 0,
-	SPINE_POSITION_MODE_PERCENT
+    SPINE_POSITION_MODE_FIXED = 0,
+    SPINE_POSITION_MODE_PERCENT
 } spine_position_mode;
 
 #ifdef __cplusplus

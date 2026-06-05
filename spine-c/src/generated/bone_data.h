@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-SPINE_C_API spine_bone_data spine_bone_data_create(int index, const char *name, /*@null*/ spine_bone_data parent);
+SPINE_C_API spine_bone_data spine_bone_data_create(int index, const char * name, /*@null*/ spine_bone_data parent);
 
 SPINE_C_API void spine_bone_data_dispose(spine_bone_data self);
 
@@ -28,8 +28,8 @@ SPINE_C_API spine_color spine_bone_data_get_color(spine_bone_data self);
  * The bone icon name as it was in Spine, or empty if nonessential data was not
  * exported.
  */
-SPINE_C_API const char *spine_bone_data_get_icon(spine_bone_data self);
-SPINE_C_API void spine_bone_data_set_icon(spine_bone_data self, const char *icon);
+SPINE_C_API const char * spine_bone_data_get_icon(spine_bone_data self);
+SPINE_C_API void spine_bone_data_set_icon(spine_bone_data self, const char * icon);
 /**
  * The bone icon's display size scale, or 1 if nonessential data was not
  * exported.
@@ -48,7 +48,7 @@ SPINE_C_API void spine_bone_data_set_visible(spine_bone_data self, bool inValue)
  * The setup pose that most animations are relative to.
  */
 SPINE_C_API spine_bone_pose spine_bone_data_get_setup_pose(spine_bone_data self);
-SPINE_C_API const char *spine_bone_data_get_name(spine_bone_data self);
+SPINE_C_API const char * spine_bone_data_get_name(spine_bone_data self);
 /**
  * When true, Skeleton::updateWorldTransform(Physics) only updates this
  * constraint if the Skeleton::getSkin() contains this constraint.

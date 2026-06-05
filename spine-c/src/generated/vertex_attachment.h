@@ -25,12 +25,8 @@ SPINE_C_API spine_rtti spine_vertex_attachment_get_rtti(spine_vertex_attachment 
  * @param offset The worldVertices index to begin writing values.
  * @param stride The number of worldVertices entries between the value pairs written.
  */
-SPINE_C_API void spine_vertex_attachment_compute_world_vertices_1(spine_vertex_attachment self, spine_skeleton skeleton, spine_slot slot,
-																  size_t start, size_t count, /*@null*/ float *worldVertices, size_t offset,
-																  size_t stride);
-SPINE_C_API void spine_vertex_attachment_compute_world_vertices_2(spine_vertex_attachment self, spine_skeleton skeleton, spine_slot slot,
-																  size_t start, size_t count, spine_array_float worldVertices, size_t offset,
-																  size_t stride);
+SPINE_C_API void spine_vertex_attachment_compute_world_vertices_1(spine_vertex_attachment self, spine_skeleton skeleton, spine_slot slot, size_t start, size_t count, /*@null*/ float * worldVertices, size_t offset, size_t stride);
+SPINE_C_API void spine_vertex_attachment_compute_world_vertices_2(spine_vertex_attachment self, spine_skeleton skeleton, spine_slot slot, size_t start, size_t count, spine_array_float worldVertices, size_t offset, size_t stride);
 /**
  * Gets a unique ID for this attachment.
  */
@@ -55,7 +51,7 @@ SPINE_C_API void spine_vertex_attachment_set_world_vertices_length(spine_vertex_
 SPINE_C_API /*@null*/ spine_attachment spine_vertex_attachment_get_timeline_attachment(spine_vertex_attachment self);
 SPINE_C_API void spine_vertex_attachment_set_timeline_attachment(spine_vertex_attachment self, /*@null*/ spine_attachment attachment);
 SPINE_C_API void spine_vertex_attachment_copy_to(spine_vertex_attachment self, spine_vertex_attachment other);
-SPINE_C_API const char *spine_vertex_attachment_get_name(spine_vertex_attachment self);
+SPINE_C_API const char * spine_vertex_attachment_get_name(spine_vertex_attachment self);
 SPINE_C_API spine_attachment spine_vertex_attachment_copy(spine_vertex_attachment self);
 SPINE_C_API spine_array_int spine_vertex_attachment_get_timeline_slots(spine_vertex_attachment self);
 SPINE_C_API void spine_vertex_attachment_set_timeline_slots(spine_vertex_attachment self, spine_array_int timelineSlots);

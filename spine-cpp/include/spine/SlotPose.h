@@ -63,6 +63,9 @@ namespace spine {
 		int _sequenceIndex;
 		Array<float> _deform;
 
+		// 0 = normal, 1 = bleach to white
+    	float _bleach;
+
 	public:
 		SlotPose();
 		virtual ~SlotPose();
@@ -100,6 +103,10 @@ namespace spine {
 		///
 		/// See VertexAttachment::computeWorldVertices() and DeformTimeline.
 		Array<float> &getDeform();
+
+		/// aim to bleach origin color of the slot
+		float getBleach();
+		void setBleach(float bleach);
 	};
 }
 

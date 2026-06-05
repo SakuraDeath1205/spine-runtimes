@@ -14,9 +14,7 @@ SPINE_C_API spine_draw_order_timeline spine_draw_order_timeline_create(size_t fr
 SPINE_C_API void spine_draw_order_timeline_dispose(spine_draw_order_timeline self);
 
 SPINE_C_API spine_rtti spine_draw_order_timeline_get_rtti(spine_draw_order_timeline self);
-SPINE_C_API void spine_draw_order_timeline_apply(spine_draw_order_timeline self, spine_skeleton skeleton, float lastTime, float time,
-												 /*@null*/ spine_array_event events, float alpha, spine_mix_from from, bool add, bool out,
-												 bool appliedPose);
+SPINE_C_API void spine_draw_order_timeline_apply(spine_draw_order_timeline self, spine_skeleton skeleton, float lastTime, float time, /*@null*/ spine_array_event events, float alpha, spine_mix_from from, bool add, bool out, bool appliedPose);
 SPINE_C_API size_t spine_draw_order_timeline_get_frame_count(spine_draw_order_timeline self);
 /**
  * Sets the time and draw order for the specified frame.

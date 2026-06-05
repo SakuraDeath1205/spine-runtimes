@@ -14,9 +14,7 @@ SPINE_C_API spine_draw_order_folder_timeline spine_draw_order_folder_timeline_cr
 SPINE_C_API void spine_draw_order_folder_timeline_dispose(spine_draw_order_folder_timeline self);
 
 SPINE_C_API spine_rtti spine_draw_order_folder_timeline_get_rtti(spine_draw_order_folder_timeline self);
-SPINE_C_API void spine_draw_order_folder_timeline_apply(spine_draw_order_folder_timeline self, spine_skeleton skeleton, float lastTime, float time,
-														/*@null*/ spine_array_event events, float alpha, spine_mix_from from, bool add, bool out,
-														bool appliedPose);
+SPINE_C_API void spine_draw_order_folder_timeline_apply(spine_draw_order_folder_timeline self, spine_skeleton skeleton, float lastTime, float time, /*@null*/ spine_array_event events, float alpha, spine_mix_from from, bool add, bool out, bool appliedPose);
 SPINE_C_API size_t spine_draw_order_folder_timeline_get_frame_count(spine_draw_order_folder_timeline self);
 /**
  * The Skeleton::getSlots() indices that this timeline affects, in setup order.
@@ -29,8 +27,7 @@ SPINE_C_API spine_array_int spine_draw_order_folder_timeline_get_slots(spine_dra
  * @param time The frame time in seconds.
  * @param drawOrder Ordered getSlots() indices, or null to use setup pose order.
  */
-SPINE_C_API void spine_draw_order_folder_timeline_set_frame(spine_draw_order_folder_timeline self, size_t frame, float time,
-															/*@null*/ spine_array_int drawOrder);
+SPINE_C_API void spine_draw_order_folder_timeline_set_frame(spine_draw_order_folder_timeline self, size_t frame, float time, /*@null*/ spine_array_int drawOrder);
 /**
  * True if this timeline supports additive blending.
  */

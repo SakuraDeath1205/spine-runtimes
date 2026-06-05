@@ -6,9 +6,9 @@ extern "C" {
 #endif
 
 typedef enum spine_texture_wrap {
-	SPINE_TEXTURE_WRAP_MIRRORED_REPEAT,
-	SPINE_TEXTURE_WRAP_CLAMP_TO_EDGE,
-	SPINE_TEXTURE_WRAP_REPEAT
+    SPINE_TEXTURE_WRAP_MIRRORED_REPEAT,
+    SPINE_TEXTURE_WRAP_CLAMP_TO_EDGE,
+    SPINE_TEXTURE_WRAP_REPEAT
 } spine_texture_wrap;
 
 #ifdef __cplusplus

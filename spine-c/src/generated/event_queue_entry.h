@@ -9,8 +9,7 @@
 extern "C" {
 #endif
 
-SPINE_C_API spine_event_queue_entry spine_event_queue_entry_create(spine_event_type eventType, /*@null*/ spine_track_entry trackEntry,
-																   /*@null*/ spine_event event);
+SPINE_C_API spine_event_queue_entry spine_event_queue_entry_create(spine_event_type eventType, /*@null*/ spine_track_entry trackEntry, /*@null*/ spine_event event);
 
 SPINE_C_API void spine_event_queue_entry_dispose(spine_event_queue_entry self);
 

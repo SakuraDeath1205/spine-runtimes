@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-SPINE_C_API spine_point_attachment spine_point_attachment_create(const char *name);
+SPINE_C_API spine_point_attachment spine_point_attachment_create(const char * name);
 
 SPINE_C_API void spine_point_attachment_dispose(spine_point_attachment self);
 
@@ -33,13 +33,13 @@ SPINE_C_API spine_color spine_point_attachment_get_color(spine_point_attachment 
 /**
  * Computes the world position from the local position.
  */
-SPINE_C_API void spine_point_attachment_compute_world_position(spine_point_attachment self, spine_bone_pose bone, float *ox, float *oy);
+SPINE_C_API void spine_point_attachment_compute_world_position(spine_point_attachment self, spine_bone_pose bone, float * ox, float * oy);
 /**
  * Computes the world rotation from the local rotation.
  */
 SPINE_C_API float spine_point_attachment_compute_world_rotation(spine_point_attachment self, spine_bone_pose bone);
 SPINE_C_API spine_attachment spine_point_attachment_copy(spine_point_attachment self);
-SPINE_C_API const char *spine_point_attachment_get_name(spine_point_attachment self);
+SPINE_C_API const char * spine_point_attachment_get_name(spine_point_attachment self);
 SPINE_C_API /*@null*/ spine_attachment spine_point_attachment_get_timeline_attachment(spine_point_attachment self);
 SPINE_C_API void spine_point_attachment_set_timeline_attachment(spine_point_attachment self, /*@null*/ spine_attachment attachment);
 SPINE_C_API spine_array_int spine_point_attachment_get_timeline_slots(spine_point_attachment self);

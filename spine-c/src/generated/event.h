@@ -34,8 +34,8 @@ SPINE_C_API void spine_event_set_float(spine_event self, float inValue);
 /**
  * The string payload for this event.
  */
-SPINE_C_API const char *spine_event_get_string(spine_event self);
-SPINE_C_API void spine_event_set_string(spine_event self, const char *inValue);
+SPINE_C_API const char * spine_event_get_string(spine_event self);
+SPINE_C_API void spine_event_set_string(spine_event self, const char * inValue);
 /**
  * If an audio path is set, the volume for the audio.
  */

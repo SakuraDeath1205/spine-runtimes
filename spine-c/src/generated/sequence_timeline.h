@@ -14,17 +14,14 @@ SPINE_C_API spine_sequence_timeline spine_sequence_timeline_create(size_t frameC
 SPINE_C_API void spine_sequence_timeline_dispose(spine_sequence_timeline self);
 
 SPINE_C_API spine_rtti spine_sequence_timeline_get_rtti(spine_sequence_timeline self);
-SPINE_C_API void spine_sequence_timeline_apply(spine_sequence_timeline self, spine_skeleton skeleton, float lastTime, float time,
-											   /*@null*/ spine_array_event events, float alpha, spine_mix_from from, bool add, bool out,
-											   bool appliedPose);
+SPINE_C_API void spine_sequence_timeline_apply(spine_sequence_timeline self, spine_skeleton skeleton, float lastTime, float time, /*@null*/ spine_array_event events, float alpha, spine_mix_from from, bool add, bool out, bool appliedPose);
 /**
  * Sets the time, mode, index, and frame time for the specified frame.
  *
  * @param frame Between 0 and frameCount, inclusive.
  * @param delay Seconds between frames.
  */
-SPINE_C_API void spine_sequence_timeline_set_frame(spine_sequence_timeline self, int frame, float time, spine_sequence_mode mode, int index,
-												   float delay);
+SPINE_C_API void spine_sequence_timeline_set_frame(spine_sequence_timeline self, int frame, float time, spine_sequence_mode mode, int index, float delay);
 /**
  * The attachment for which the sequence index will be set.
  *

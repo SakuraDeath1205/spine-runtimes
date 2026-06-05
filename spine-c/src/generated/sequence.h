@@ -74,7 +74,7 @@ SPINE_C_API bool spine_sequence_has_path_suffix(spine_sequence self);
  * Returns the specified base path with an optional numeric suffix for the
  * specified index.
  */
-SPINE_C_API const char *spine_sequence_get_path(spine_sequence self, const char *basePath, int index);
+SPINE_C_API const char * spine_sequence_get_path(spine_sequence self, const char * basePath, int index);
 /**
  * Returns a unique ID for this sequence.
  */

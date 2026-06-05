@@ -50,13 +50,11 @@ SPINE_C_API /*@null*/ spine_bounding_box_attachment spine_skeleton_bounds_contai
  * only call this method if aabbIntersectsSegment(float, float, float, float)
  * returns true.
  */
-SPINE_C_API /*@null*/ spine_bounding_box_attachment spine_skeleton_bounds_intersects_segment_1(spine_skeleton_bounds self, float x1, float y1,
-																							   float x2, float y2);
+SPINE_C_API /*@null*/ spine_bounding_box_attachment spine_skeleton_bounds_intersects_segment_1(spine_skeleton_bounds self, float x1, float y1, float x2, float y2);
 /**
  * Returns true if the polygon contains any part of the line segment.
  */
-SPINE_C_API bool spine_skeleton_bounds_intersects_segment_2(spine_skeleton_bounds self, spine_polygon polygon, float x1, float y1, float x2,
-															float y2);
+SPINE_C_API bool spine_skeleton_bounds_intersects_segment_2(spine_skeleton_bounds self, spine_polygon polygon, float x1, float y1, float x2, float y2);
 /**
  * Returns the polygon for the given bounding box attachment or null if no
  * polygon can be found for the attachment. Requires a call to update() first.
@@ -66,8 +64,7 @@ SPINE_C_API /*@null*/ spine_polygon spine_skeleton_bounds_get_polygon(spine_skel
  * Returns the bounding box for the given polygon or null. Requires a call to
  * update() first.
  */
-SPINE_C_API /*@null*/ spine_bounding_box_attachment spine_skeleton_bounds_get_bounding_box(spine_skeleton_bounds self,
-																						   /*@null*/ spine_polygon polygon);
+SPINE_C_API /*@null*/ spine_bounding_box_attachment spine_skeleton_bounds_get_bounding_box(spine_skeleton_bounds self, /*@null*/ spine_polygon polygon);
 /**
  * Returns all polygons or an empty array. Requires a call to update() first.
  */

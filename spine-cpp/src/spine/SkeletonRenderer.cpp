@@ -56,6 +56,7 @@ static RenderCommand *createRenderCommand(BlockAllocator &allocator, int numVert
 	cmd->uvs = allocator.allocate<float>(numVertices << 1);
 	cmd->colors = allocator.allocate<uint32_t>(numVertices);
 	cmd->darkColors = allocator.allocate<uint32_t>(numVertices);
+	cmd->bleaches = allocator.allocate<float>(numVertices);
 	cmd->numVertices = numVertices;
 	cmd->indices = allocator.allocate<uint16_t>(numIndices);
 	cmd->numIndices = numIndices;
@@ -73,6 +74,7 @@ static RenderCommand *batchSubCommands(BlockAllocator &allocator, Array<RenderCo
 	uint32_t *colors = batched->colors;
 	uint32_t *darkColors = batched->darkColors;
 	uint16_t *indices = batched->indices;
+	float *bleaches = batched->bleaches;
 	int indicesOffset = 0;
 	for (int i = first; i <= last; i++) {
 		RenderCommand *cmd = commands[i];
@@ -80,6 +82,7 @@ static RenderCommand *batchSubCommands(BlockAllocator &allocator, Array<RenderCo
 		memcpy(uvs, cmd->uvs, sizeof(float) * 2 * cmd->numVertices);
 		memcpy(colors, cmd->colors, sizeof(int32_t) * cmd->numVertices);
 		memcpy(darkColors, cmd->darkColors, sizeof(int32_t) * cmd->numVertices);
+		memcpy(bleaches, cmd->bleaches, sizeof(float) * cmd->numVertices);
 		for (int ii = 0; ii < cmd->numIndices; ii++) indices[ii] = cmd->indices[ii] + indicesOffset;
 		indicesOffset += cmd->numVertices;
 		positions += 2 * cmd->numVertices;
@@ -87,6 +90,7 @@ static RenderCommand *batchSubCommands(BlockAllocator &allocator, Array<RenderCo
 		colors += cmd->numVertices;
 		darkColors += cmd->numVertices;
 		indices += cmd->numIndices;
+		bleaches += cmd->numVertices;
 	}
 	return batched;
 }
@@ -217,6 +221,7 @@ RenderCommand *SkeletonRenderer::render(Skeleton &skeleton) {
 		uint8_t a = static_cast<uint8_t>(skeleton.getColor().a * slot.getAppliedPose().getColor().a * attachmentColor->a * 255);
 		uint32_t color = (a << 24) | (r << 16) | (g << 8) | b;
 		uint32_t darkColor = 0xff000000;
+		float bleach = slot.getAppliedPose().getBleach();
 		if (slot.getAppliedPose().hasDarkColor()) {
 			Color &slotDarkColor = slot.getAppliedPose().getDarkColor();
 			darkColor = 0xff000000 | (static_cast<uint8_t>(slotDarkColor.r * 255) << 16) | (static_cast<uint8_t>(slotDarkColor.g * 255) << 8) |
@@ -239,6 +244,7 @@ RenderCommand *SkeletonRenderer::render(Skeleton &skeleton) {
 		for (int ii = 0; ii < verticesCount; ii++) {
 			cmd->colors[ii] = color;
 			cmd->darkColors[ii] = darkColor;
+			cmd->bleaches[ii] = bleach;
 		}
 		memcpy(cmd->indices, indices->buffer(), indices->size() * sizeof(uint16_t));
 		clipper.clipEnd(slot);

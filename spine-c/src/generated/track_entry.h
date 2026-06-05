@@ -265,7 +265,7 @@ SPINE_C_API bool spine_track_entry_is_next_ready(spine_track_entry self);
  */
 SPINE_C_API /*@null*/ spine_animation_state spine_track_entry_get_animation_state(spine_track_entry self);
 SPINE_C_API void spine_track_entry_set_animation_state(spine_track_entry self, /*@null*/ spine_animation_state state);
-SPINE_C_API /*@null*/ void *spine_track_entry_get_renderer_object(spine_track_entry self);
+SPINE_C_API /*@null*/ void * spine_track_entry_get_renderer_object(spine_track_entry self);
 
 #ifdef __cplusplus
 }

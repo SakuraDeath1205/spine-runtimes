@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-SPINE_C_API spine_bounding_box_attachment spine_bounding_box_attachment_create(const char *name);
+SPINE_C_API spine_bounding_box_attachment spine_bounding_box_attachment_create(const char * name);
 
 SPINE_C_API void spine_bounding_box_attachment_dispose(spine_bounding_box_attachment self);
 
@@ -29,12 +29,8 @@ SPINE_C_API spine_attachment spine_bounding_box_attachment_copy(spine_bounding_b
  * @param offset The worldVertices index to begin writing values.
  * @param stride The number of worldVertices entries between the value pairs written.
  */
-SPINE_C_API void spine_bounding_box_attachment_compute_world_vertices_1(spine_bounding_box_attachment self, spine_skeleton skeleton, spine_slot slot,
-																		size_t start, size_t count, /*@null*/ float *worldVertices, size_t offset,
-																		size_t stride);
-SPINE_C_API void spine_bounding_box_attachment_compute_world_vertices_2(spine_bounding_box_attachment self, spine_skeleton skeleton, spine_slot slot,
-																		size_t start, size_t count, spine_array_float worldVertices, size_t offset,
-																		size_t stride);
+SPINE_C_API void spine_bounding_box_attachment_compute_world_vertices_1(spine_bounding_box_attachment self, spine_skeleton skeleton, spine_slot slot, size_t start, size_t count, /*@null*/ float * worldVertices, size_t offset, size_t stride);
+SPINE_C_API void spine_bounding_box_attachment_compute_world_vertices_2(spine_bounding_box_attachment self, spine_skeleton skeleton, spine_slot slot, size_t start, size_t count, spine_array_float worldVertices, size_t offset, size_t stride);
 /**
  * Gets a unique ID for this attachment.
  */
@@ -59,7 +55,7 @@ SPINE_C_API void spine_bounding_box_attachment_set_world_vertices_length(spine_b
 SPINE_C_API /*@null*/ spine_attachment spine_bounding_box_attachment_get_timeline_attachment(spine_bounding_box_attachment self);
 SPINE_C_API void spine_bounding_box_attachment_set_timeline_attachment(spine_bounding_box_attachment self, /*@null*/ spine_attachment attachment);
 SPINE_C_API void spine_bounding_box_attachment_copy_to(spine_bounding_box_attachment self, spine_vertex_attachment other);
-SPINE_C_API const char *spine_bounding_box_attachment_get_name(spine_bounding_box_attachment self);
+SPINE_C_API const char * spine_bounding_box_attachment_get_name(spine_bounding_box_attachment self);
 SPINE_C_API spine_array_int spine_bounding_box_attachment_get_timeline_slots(spine_bounding_box_attachment self);
 SPINE_C_API void spine_bounding_box_attachment_set_timeline_slots(spine_bounding_box_attachment self, spine_array_int timelineSlots);
 /**
@@ -69,8 +65,7 @@ SPINE_C_API void spine_bounding_box_attachment_set_timeline_slots(spine_bounding
  * @param slots The Skeleton::getSlots().
  * @param slotIndex The timeline's primary slot index.
  */
-SPINE_C_API bool spine_bounding_box_attachment_is_timeline_active(spine_bounding_box_attachment self, spine_array_slot slots, int slotIndex,
-																  bool appliedPose);
+SPINE_C_API bool spine_bounding_box_attachment_is_timeline_active(spine_bounding_box_attachment self, spine_array_slot slots, int slotIndex, bool appliedPose);
 SPINE_C_API int spine_bounding_box_attachment_get_ref_count(spine_bounding_box_attachment self);
 SPINE_C_API void spine_bounding_box_attachment_reference(spine_bounding_box_attachment self);
 SPINE_C_API void spine_bounding_box_attachment_dereference(spine_bounding_box_attachment self);
