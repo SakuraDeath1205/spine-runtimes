@@ -36,6 +36,10 @@
 #include <spine/SkeletonRenderer.h>
 #include <spine/AnimationState.h>
 #include <cstring>
+#include "spine/TextureRegion.h"
+#include "spine/Atlas.h"
+#include "spine/RegionAttachment.h"
+#include "spine/Sequence.h"
 
 using namespace spine;
 
@@ -586,4 +590,40 @@ void spine_track_entry_set_listener(spine_track_entry entry, spine_animation_sta
 	if (!entry) return;
 	TrackEntry *_entry = (TrackEntry *) entry;
 	_entry->setListener((AnimationStateListener) listener, user_data);
+}
+
+// implements of external attachment replacement
+void spine_ext_texture_region_set_renderer_object(
+    spine_texture_region region,
+    spine_void rendererObject
+) {
+    if (!region) return;
+
+    ((TextureRegion *)region)->setRendererObject(rendererObject);
+}
+
+void spine_ext_atlas_page_set_texture(
+    spine_atlas_page page,
+    spine_void texture
+) {
+    if (!page) return;
+
+    ((AtlasPage *)page)->texture = texture;
+}
+
+void spine_ext_sequence_set_single_region_and_update(
+    spine_sequence sequence,
+    spine_region_attachment attachment,
+    spine_texture_region region
+) {
+    if (!sequence || !attachment || !region) return;
+
+    Sequence *seq = (Sequence *)sequence;
+    Array<TextureRegion *> &regions = seq->getRegions();
+
+    regions.setSize(1, nullptr);
+    regions[0] = (TextureRegion *)region;
+
+    seq->setSetupIndex(0);
+    seq->update(*(RegionAttachment *)attachment);
 }

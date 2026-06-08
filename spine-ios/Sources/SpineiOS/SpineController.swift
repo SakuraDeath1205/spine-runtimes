@@ -79,6 +79,10 @@ public final class SpineController: NSObject, ObservableObject {
     private var offsetX: CGFloat = 0
     private var offsetY: CGFloat = 0
 
+    internal weak var renderer: SpineRenderer?
+    private var externalAttachmentStore: [String: ExternalAttachmentHandle] = [:]
+
+
     @Published
     public private(set) var isPlaying: Bool = true
 
@@ -253,4 +257,153 @@ extension SpineController: SpineRendererDataSource {
         }
         return commands
     }
+}
+
+private final class ExternalAttachmentHandle {
+    let attachment: RegionAttachment
+    let region: TextureRegion
+    let image: UIImage
+    let atlas: Atlas?
+
+    init(
+        attachment: RegionAttachment,
+        region: TextureRegion,
+        image: UIImage,
+        atlas: Atlas?
+    ) {
+        self.attachment = attachment
+        self.region = region
+        self.image = image
+        self.atlas = atlas
+    }
+}
+
+public enum SpineExternalAttachmentError: Error {
+    case rendererNotReady
+    case imageNotFound(String)
+    case invalidImage
+    case slotNotFound(String)
+    case attachmentNotFound(slot: String, attachment: String?)
+    case templateIsNotRegionAttachment(String)
+    case atlasRegionNotFound(String)
+    case atlasPageNotFound
+}
+
+extension SpineController {
+    @MainActor
+    public func replaceRegionAttachment(
+        slotName: String,
+        pngFileName: String,
+        atlasFileName: String? = nil,
+        regionName: String? = nil,
+        templateAttachmentName: String? = nil,
+        bundle: Bundle = .main,
+        keepTemplateSize: Bool = true
+    ) async throws {
+        guard let renderer else {
+            throw SpineExternalAttachmentError.rendererNotReady
+        }
+
+        guard let slot = skeleton.findSlot(slotName) else {
+            throw SpineExternalAttachmentError.slotNotFound(slotName)
+        }
+
+        let templateAttachment: Attachment?
+
+        if let templateAttachmentName {
+            templateAttachment = skeleton.getAttachment(slotName, templateAttachmentName)
+        } else {
+            templateAttachment = slot.appliedPose.attachment ?? slot.pose.attachment
+        }
+
+        guard let templateAttachment else {
+            throw SpineExternalAttachmentError.attachmentNotFound(
+                slot: slotName,
+                attachment: templateAttachmentName
+            )
+        }
+
+        guard let template = templateAttachment as? RegionAttachment else {
+            throw SpineExternalAttachmentError.templateIsNotRegionAttachment(templateAttachment.name)
+        }
+
+        let copied = template.copyAttachment() as! RegionAttachment
+
+        let image = try Self.loadImage(pngFileName, bundle: bundle)
+        let textureIndex = try renderer.registerTexture(image)
+
+        let runtimeRegion: TextureRegion
+        var ownedAtlas: Atlas?
+
+        if let atlasFileName {
+            let atlasAndPages = try await Atlas.fromBundle(atlasFileName, bundle: bundle)
+            let externalAtlas = atlasAndPages.0
+            ownedAtlas = externalAtlas
+
+            let lookupName = regionName ?? (template.path.isEmpty ? template.name : template.path)
+
+            guard let atlasRegion = externalAtlas.findRegion(lookupName) else {
+                throw SpineExternalAttachmentError.atlasRegionNotFound(lookupName)
+            }
+
+            atlasRegion.setRendererObjectTextureIndex(textureIndex)
+
+            if let page = atlasRegion.page {
+                page.setTextureIndex(textureIndex)
+            } else {
+                throw SpineExternalAttachmentError.atlasPageNotFound
+            }
+
+            runtimeRegion = atlasRegion
+            copied.path = lookupName
+        } else {
+            guard let cgImage = image.cgImage else {
+                throw SpineExternalAttachmentError.invalidImage
+            }
+
+            let region = TextureRegion()
+            region.u = 0
+            region.v = 0
+            region.u2 = 1
+            region.v2 = 1
+            region.regionWidth = Int32(cgImage.width)
+            region.regionHeight = Int32(cgImage.height)
+            region.setRendererObjectTextureIndex(textureIndex)
+
+            runtimeRegion = region
+            copied.path = regionName ?? pngFileName
+
+            if !keepTemplateSize {
+                copied.width = Float(cgImage.width)
+                copied.height = Float(cgImage.height)
+            }
+        }
+
+        copied.sequence.setSingleRegionAndUpdate(runtimeRegion, attachment: copied)
+
+        slot.pose.attachment = copied
+        slot.appliedPose.attachment = copied
+
+        externalAttachmentStore["\(slotName)::\(templateAttachmentName ?? "__current__")"] =
+            ExternalAttachmentHandle(
+                attachment: copied,
+                region: runtimeRegion,
+                image: image,
+                atlas: ownedAtlas
+            )
+    }
+
+    private static func loadImage(_ nameOrPath: String, bundle: Bundle) throws -> UIImage {
+        if let image = UIImage(named: nameOrPath, in: bundle, compatibleWith: nil) {
+            return image
+        }
+
+        let url = URL(fileURLWithPath: nameOrPath)
+        if let image = UIImage(contentsOfFile: url.path) {
+            return image
+        }
+
+        throw SpineExternalAttachmentError.imageNotFound(nameOrPath)
+    }
+
 }

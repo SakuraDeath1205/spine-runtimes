@@ -126,6 +126,24 @@ SPINE_C_API void spine_animation_state_set_listener(spine_animation_state state,
 
 SPINE_C_API void spine_track_entry_set_listener(spine_track_entry entry, spine_animation_state_listener listener, void *user_data);
 
+// Runtime external attachment functions
+SPINE_C_API void spine_ext_texture_region_set_renderer_object(
+    spine_texture_region region,
+    spine_void rendererObject
+);
+
+SPINE_C_API void spine_ext_atlas_page_set_texture(
+    spine_atlas_page page,
+    spine_void texture
+);
+
+SPINE_C_API void spine_ext_sequence_set_single_region_and_update(
+    spine_sequence sequence,
+    spine_region_attachment attachment,
+    spine_texture_region region
+);
+
+
 #ifdef __cplusplus
 }
 #endif

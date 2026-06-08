@@ -259,6 +259,7 @@ extension SpineUIView {
         )
         renderer?.delegate = controller
         renderer?.dataSource = controller
+        controller.renderer = renderer
         renderer?.mtkView(self, drawableSizeWillChange: drawableSize)
         delegate = renderer
     }

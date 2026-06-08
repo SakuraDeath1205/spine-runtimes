@@ -52,7 +52,8 @@ protocol SpineRendererDataSource: AnyObject {
 internal final class SpineRenderer: NSObject, MTKViewDelegate {
 
     private let device: MTLDevice
-    private let textures: [MTLTexture]
+    private var textures: [MTLTexture]
+    private let textureLoader: MTKTextureLoader
     private let commandQueue: MTLCommandQueue
 
     private var sizeInPoints: CGSize = .zero
@@ -127,6 +128,7 @@ internal final class SpineRenderer: NSObject, MTKViewDelegate {
             pipelineStatesByBlendMode[Int(blendMode.rawValue)] = try device.makeRenderPipelineState(descriptor: descriptor)
         }
 
+        self.textureLoader = textureLoader
         super.init()
 
         increaseBuffersSize(to: SpineRenderer.defaultBufferSize)
@@ -317,6 +319,24 @@ internal final class SpineRenderer: NSObject, MTKViewDelegate {
         buffers = (0..<SpineRenderer.numberOfBuffers).map { _ in
             device.makeBuffer(length: size, options: .storageModeShared)!
         }
+    }
+
+    // 把新的 UIImage 注册进 renderer 的 texture 数组，并返回 textureIndex
+    internal func registerTexture(_ image: UIImage) throws -> Int {
+        guard let cgImage = image.cgImage else {
+            throw SpineExternalAttachmentError.invalidImage
+        }
+
+        let texture = try textureLoader.newTexture(
+            cgImage: cgImage,
+            options: [
+                .textureUsage: NSNumber(value: MTLTextureUsage.shaderRead.rawValue),
+                .SRGB: NSNumber(value: false)
+            ]
+        )
+
+        textures.append(texture)
+        return textures.count - 1
     }
 }
 
