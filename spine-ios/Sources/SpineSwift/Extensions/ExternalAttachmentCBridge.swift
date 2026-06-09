@@ -31,3 +31,17 @@ public extension Sequence {
         )
     }
 }
+
+public extension Sequence {
+    @nonobjc
+    func setSingleRegionAndUpdate(
+        _ region: TextureRegion,
+        attachment: MeshAttachment
+    ) {
+        spine_ext_sequence_set_single_region_and_update_mesh(
+            _ptr.assumingMemoryBound(to: spine_sequence_wrapper.self),
+            attachment._ptr.assumingMemoryBound(to: spine_mesh_attachment_wrapper.self),
+            region._ptr.assumingMemoryBound(to: spine_texture_region_wrapper.self)
+        )
+    }
+}

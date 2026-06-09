@@ -38,6 +38,11 @@ extern "C" {
 #include "base.h"
 #include "generated/atlas.h"
 #include "generated/skeleton_data.h"
+#include "generated/texture_region.h"
+#include "generated/atlas_page.h"
+#include "generated/region_attachment.h"
+#include "generated/mesh_attachment.h"
+#include "generated/sequence.h"
 
 // Custom types for spine-c-new (not generated)
 SPINE_OPAQUE_TYPE(spine_atlas_result)
@@ -143,6 +148,12 @@ SPINE_C_API void spine_ext_sequence_set_single_region_and_update(
     spine_texture_region region
 );
 
+// runtime external mesh attachment replacement
+SPINE_C_API void spine_ext_sequence_set_single_region_and_update_mesh(
+    spine_sequence sequence,
+    spine_mesh_attachment attachment,
+    spine_texture_region region
+);
 
 #ifdef __cplusplus
 }

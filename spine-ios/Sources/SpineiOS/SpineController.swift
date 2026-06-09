@@ -205,7 +205,7 @@ public final class SpineController: NSObject, ObservableObject {
 
     private func retainExternalAttachment(
         slotName: String,
-        attachment: RegionAttachment,
+        attachment: Attachment,
         region: TextureRegion,
         images: [UIImage],
         atlas: Atlas?,
@@ -219,7 +219,6 @@ public final class SpineController: NSObject, ObservableObject {
             textureIndices: textureIndices
         )
     }
-
 }
 
 extension SpineController: SpineRendererDelegate {
@@ -277,14 +276,14 @@ extension SpineController: SpineRendererDataSource {
 }
 
 private final class ExternalAttachmentHandle {
-    let attachment: RegionAttachment
+    let attachment: Attachment
     let region: TextureRegion
     let images: [UIImage]
     let atlas: Atlas?
     let textureIndices: [Int]
 
     init(
-        attachment: RegionAttachment,
+        attachment: Attachment,
         region: TextureRegion,
         images: [UIImage],
         atlas: Atlas?,
@@ -305,6 +304,7 @@ public enum SpineExternalAttachmentError: Error {
     case slotNotFound(String)
     case attachmentNotFound(slot: String, attachment: String?)
     case templateIsNotRegionAttachment(String)
+    case templateIsNotRenderableAttachment(String)
 
     case atlasFileNotFound(String)
     case invalidAtlasString(String)
@@ -323,11 +323,53 @@ public enum SpineExternalAttachmentError: Error {
 private struct AtlasReplacementTarget {
     let slotName: String
     let slot: Slot
-    let template: RegionAttachment
+    let template: Attachment
     let region: AtlasRegion
 }
 
 extension SpineController {
+    private func applyTextureRegionToCopiedAttachment(
+        template: Attachment,
+        region: TextureRegion,
+        path: String,
+        imageSize: CGSize?,
+        keepTemplateSize: Bool
+    ) throws -> Attachment {
+        if let regionTemplate = template as? RegionAttachment {
+            let copied = regionTemplate.copyAttachment() as! RegionAttachment
+
+            copied.path = path
+
+            if !keepTemplateSize, let imageSize {
+                copied.width = Float(imageSize.width)
+                copied.height = Float(imageSize.height)
+            }
+
+            copied.sequence.setSingleRegionAndUpdate(
+                region,
+                attachment: copied
+            )
+
+            return copied
+        }
+
+        if let meshTemplate = template as? MeshAttachment {
+            let copied = meshTemplate.copyAttachment() as! MeshAttachment
+
+            copied.path = path
+
+            copied.sequence.setSingleRegionAndUpdate(
+                region,
+                attachment: copied
+            )
+
+            return copied
+        }
+
+        throw SpineExternalAttachmentError.templateIsNotRenderableAttachment(
+            template.name
+        )
+    }
 
     @MainActor
     @discardableResult
@@ -383,7 +425,7 @@ extension SpineController {
             throw SpineExternalAttachmentError.slotNotFound(slotName)
         }
 
-        let template = try resolveTemplateRegionAttachment(
+        let template = try resolveTemplateRenderableAttachment(
             slotName: slotName,
             slot: slot,
             templateAttachmentName: templateAttachmentName,
@@ -401,8 +443,6 @@ extension SpineController {
 
         let textureIndex = try renderer.registerTexture(image)
 
-        let copied = template.copyAttachment() as! RegionAttachment
-
         let runtimeRegion = TextureRegion()
         runtimeRegion.u = 0
         runtimeRegion.v = 0
@@ -412,16 +452,15 @@ extension SpineController {
         runtimeRegion.regionHeight = Int32(cgImage.height)
         runtimeRegion.setRendererObjectTextureIndex(textureIndex)
 
-        copied.path = pngFileName
-
-        if !keepTemplateSize {
-            copied.width = Float(cgImage.width)
-            copied.height = Float(cgImage.height)
-        }
-
-        copied.sequence.setSingleRegionAndUpdate(
-            runtimeRegion,
-            attachment: copied
+        let copied = try applyTextureRegionToCopiedAttachment(
+            template: template,
+            region: runtimeRegion,
+            path: pngFileName,
+            imageSize: CGSize(
+                width: cgImage.width,
+                height: cgImage.height
+            ),
+            keepTemplateSize: keepTemplateSize
         )
 
         slot.pose.attachment = copied
@@ -472,7 +511,7 @@ extension SpineController {
                 throw SpineExternalAttachmentError.slotNotFound(slotName)
             }
 
-            let template = try resolveTemplateRegionAttachment(
+            let template = try resolveTemplateRenderableAttachment(
                 slotName: slotName,
                 slot: slot,
                 templateAttachmentName: templateAttachmentName,
@@ -612,7 +651,7 @@ extension SpineController {
                 continue
             }
 
-            let template = try resolveTemplateRegionAttachment(
+            let template = try resolveTemplateRenderableAttachment(
                 slotName: slotName,
                 slot: slot,
                 templateAttachmentName: templateAttachmentName,
@@ -663,7 +702,7 @@ extension SpineController {
                 continue
             }
 
-            let template = try resolveTemplateRegionAttachment(
+            let template = try resolveTemplateRenderableAttachment(
                 slotName: slotName,
                 slot: slot,
                 templateAttachmentName: templateAttachmentName,
@@ -736,6 +775,10 @@ extension SpineController {
             appendCandidates(currentRegionAttachment.path)
         }
 
+        if let currentMeshAttachment = currentAttachment as? MeshAttachment {
+            appendCandidates(currentMeshAttachment.path)
+        }
+
         if let currentAttachment {
             appendCandidates(currentAttachment.name)
         }
@@ -779,12 +822,12 @@ extension SpineController {
         return result
     }
 
-    private func resolveTemplateRegionAttachment(
+    private func resolveTemplateRenderableAttachment(
         slotName: String,
         slot: Slot,
         templateAttachmentName: String?,
         matchedRegionName: String?
-    ) throws -> RegionAttachment {
+    ) throws -> Attachment {
         if let templateAttachmentName {
             guard let attachment = skeleton.getAttachment(slotName, templateAttachmentName) else {
                 throw SpineExternalAttachmentError.attachmentNotFound(
@@ -793,18 +836,12 @@ extension SpineController {
                 )
             }
 
-            guard let regionAttachment = attachment as? RegionAttachment else {
-                throw SpineExternalAttachmentError.templateIsNotRegionAttachment(
-                    attachment.name
-                )
-            }
-
-            return regionAttachment
+            return try Self.validateRenderableAttachment(attachment)
         }
 
         if let current = slot.appliedPose.attachment ?? slot.pose.attachment {
-            if let regionAttachment = current as? RegionAttachment {
-                return regionAttachment
+            if current is RegionAttachment || current is MeshAttachment {
+                return current
             }
         }
 
@@ -816,27 +853,15 @@ extension SpineController {
                     continue
                 }
 
-                guard let regionAttachment = attachment as? RegionAttachment else {
-                    throw SpineExternalAttachmentError.templateIsNotRegionAttachment(
-                        attachment.name
-                    )
-                }
-
-                return regionAttachment
+                return try Self.validateRenderableAttachment(attachment)
             }
         }
 
         let setupAttachmentName = slot.data.attachmentName
 
         if !setupAttachmentName.isEmpty,
-           let attachment = skeleton.getAttachment(slotName, setupAttachmentName) {
-            guard let regionAttachment = attachment as? RegionAttachment else {
-                throw SpineExternalAttachmentError.templateIsNotRegionAttachment(
-                    attachment.name
-                )
-            }
-
-            return regionAttachment
+        let attachment = skeleton.getAttachment(slotName, setupAttachmentName) {
+            return try Self.validateRenderableAttachment(attachment)
         }
 
         throw SpineExternalAttachmentError.attachmentNotFound(
@@ -845,36 +870,35 @@ extension SpineController {
         )
     }
 
+    private static func validateRenderableAttachment(
+        _ attachment: Attachment
+    ) throws -> Attachment {
+        if attachment is RegionAttachment || attachment is MeshAttachment {
+            return attachment
+        }
+
+        throw SpineExternalAttachmentError.templateIsNotRenderableAttachment(
+            attachment.name
+        )
+    }
+
+
     private func applyAtlasReplacement(
         slotName: String,
         slot: Slot,
-        template: RegionAttachment,
+        template: Attachment,
         region: AtlasRegion,
         runtimeAtlas: Atlas,
         pageImages: [UIImage],
         textureIndices: [Int],
         keepTemplateSize: Bool
     ) throws {
-        let copied = template.copyAttachment() as! RegionAttachment
-
-        copied.path = region.name
-
-        if !keepTemplateSize {
-            let logicalWidth = region.originalWidth > 0
-                ? region.originalWidth
-                : region.regionWidth
-
-            let logicalHeight = region.originalHeight > 0
-                ? region.originalHeight
-                : region.regionHeight
-
-            copied.width = Float(logicalWidth)
-            copied.height = Float(logicalHeight)
-        }
-
-        copied.sequence.setSingleRegionAndUpdate(
-            region,
-            attachment: copied
+        let copied = try applyTextureRegionToCopiedAttachment(
+            template: template,
+            region: region,
+            path: region.name,
+            imageSize: nil,
+            keepTemplateSize: keepTemplateSize
         )
 
         slot.pose.attachment = copied
@@ -1040,7 +1064,7 @@ extension SpineController {
     private static func resolveAtlasRegion(
         atlas: Atlas,
         regionName: String?,
-        template: RegionAttachment
+        template: Attachment
     ) throws -> AtlasRegion {
         if let regionName, !regionName.isEmpty {
             let regionNameCandidates = nameCandidates(for: regionName)
@@ -1054,8 +1078,9 @@ extension SpineController {
             throw SpineExternalAttachmentError.atlasRegionNotFound(regionName)
         }
 
-        if !template.path.isEmpty {
-            let pathCandidates = nameCandidates(for: template.path)
+        if let templatePath = renderableAttachmentPath(template),
+        !templatePath.isEmpty {
+            let pathCandidates = nameCandidates(for: templatePath)
 
             for candidate in pathCandidates {
                 if let region = atlas.findRegion(candidate) {
@@ -1080,4 +1105,19 @@ extension SpineController {
 
         throw SpineExternalAttachmentError.atlasRegionNameRequired
     }
+
+    private static func renderableAttachmentPath(
+        _ attachment: Attachment
+    ) -> String? {
+        if let regionAttachment = attachment as? RegionAttachment {
+            return regionAttachment.path
+        }
+
+        if let meshAttachment = attachment as? MeshAttachment {
+            return meshAttachment.path
+        }
+
+        return nil
+    }
+
 }

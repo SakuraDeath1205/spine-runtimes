@@ -40,6 +40,7 @@
 #include "spine/Atlas.h"
 #include "spine/RegionAttachment.h"
 #include "spine/Sequence.h"
+#include "spine/MeshAttachment.h"
 
 using namespace spine;
 
@@ -626,4 +627,21 @@ void spine_ext_sequence_set_single_region_and_update(
 
     seq->setSetupIndex(0);
     seq->update(*(RegionAttachment *)attachment);
+}
+
+void spine_ext_sequence_set_single_region_and_update_mesh(
+    spine_sequence sequence,
+    spine_mesh_attachment attachment,
+    spine_texture_region region
+) {
+    if (!sequence || !attachment || !region) return;
+
+    Sequence *seq = (Sequence *)sequence;
+    Array<TextureRegion *> &regions = seq->getRegions();
+
+    regions.setSize(1, nullptr);
+    regions[0] = (TextureRegion *)region;
+
+    seq->setSetupIndex(0);
+    seq->update(*(MeshAttachment *)attachment);
 }
