@@ -338,6 +338,11 @@ internal final class SpineRenderer: NSObject, MTKViewDelegate {
         textures.append(texture)
         return textures.count - 1
     }
+
+    // 注册atlas多图
+    internal func registerTextures(_ images: [UIImage]) throws -> [Int] {
+    try images.map { try registerTexture($0) }
+}
 }
 
 extension BlendMode {

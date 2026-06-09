@@ -203,6 +203,23 @@ public final class SpineController: NSObject, ObservableObject {
         onInitialized?(self)
     }
 
+    private func retainExternalAttachment(
+        slotName: String,
+        attachment: RegionAttachment,
+        region: TextureRegion,
+        images: [UIImage],
+        atlas: Atlas?,
+        textureIndices: [Int]
+    ) {
+        externalAttachmentStore[slotName] = ExternalAttachmentHandle(
+            attachment: attachment,
+            region: region,
+            images: images,
+            atlas: atlas,
+            textureIndices: textureIndices
+        )
+    }
+
 }
 
 extension SpineController: SpineRendererDelegate {
@@ -262,19 +279,22 @@ extension SpineController: SpineRendererDataSource {
 private final class ExternalAttachmentHandle {
     let attachment: RegionAttachment
     let region: TextureRegion
-    let image: UIImage
+    let images: [UIImage]
     let atlas: Atlas?
+    let textureIndices: [Int]
 
     init(
         attachment: RegionAttachment,
         region: TextureRegion,
-        image: UIImage,
-        atlas: Atlas?
+        images: [UIImage],
+        atlas: Atlas?,
+        textureIndices: [Int]
     ) {
         self.attachment = attachment
         self.region = region
-        self.image = image
+        self.images = images
         self.atlas = atlas
+        self.textureIndices = textureIndices
     }
 }
 
@@ -285,17 +305,72 @@ public enum SpineExternalAttachmentError: Error {
     case slotNotFound(String)
     case attachmentNotFound(slot: String, attachment: String?)
     case templateIsNotRegionAttachment(String)
-    case atlasRegionNotFound(String)
+
+    case atlasFileNotFound(String)
+    case invalidAtlasString(String)
+    case atlasHasNoPages(String)
     case atlasPageNotFound
+    case atlasPageImageCountMismatch(pages: Int, images: Int)
+    case atlasRegionNotFound(String)
+    case atlasRegionNameRequired
+    case singlePageImageOverrideUsedForMultiPageAtlas(pageCount: Int)
+
+    case slotNameRequiredForPngOnly
+    case regionNameRequiresSlot
+    case noMatchingSlotsForAtlas(String)
+}
+
+private struct AtlasReplacementTarget {
+    let slotName: String
+    let slot: Slot
+    let template: RegionAttachment
+    let region: AtlasRegion
 }
 
 extension SpineController {
+
+    @MainActor
+    @discardableResult
+    public func replaceExternalRegionAttachment(
+        slotName: String? = nil,
+        pngFileName: String,
+        atlasFileName: String? = nil,
+        regionName: String? = nil,
+        templateAttachmentName: String? = nil,
+        bundle: Bundle = .main,
+        keepTemplateSize: Bool = true
+    ) async throws -> [String] {
+        if let atlasFileName {
+            return try await replaceRegionAttachmentFromAtlas(
+                slotName: slotName,
+                atlasFileName: atlasFileName,
+                regionName: regionName,
+                pageImageFileNameOverride: pngFileName,
+                templateAttachmentName: templateAttachmentName,
+                bundle: bundle,
+                keepTemplateSize: keepTemplateSize
+            )
+        }
+
+        guard let slotName else {
+            throw SpineExternalAttachmentError.slotNameRequiredForPngOnly
+        }
+
+        try await replaceRegionAttachment(
+            slotName: slotName,
+            pngFileName: pngFileName,
+            templateAttachmentName: templateAttachmentName,
+            bundle: bundle,
+            keepTemplateSize: keepTemplateSize
+        )
+
+        return [slotName]
+    }
+
     @MainActor
     public func replaceRegionAttachment(
         slotName: String,
         pngFileName: String,
-        atlasFileName: String? = nil,
-        regionName: String? = nil,
         templateAttachmentName: String? = nil,
         bundle: Bundle = .main,
         keepTemplateSize: Bool = true
@@ -308,102 +383,701 @@ extension SpineController {
             throw SpineExternalAttachmentError.slotNotFound(slotName)
         }
 
-        let templateAttachment: Attachment?
+        let template = try resolveTemplateRegionAttachment(
+            slotName: slotName,
+            slot: slot,
+            templateAttachmentName: templateAttachmentName,
+            matchedRegionName: nil
+        )
 
-        if let templateAttachmentName {
-            templateAttachment = skeleton.getAttachment(slotName, templateAttachmentName)
-        } else {
-            templateAttachment = slot.appliedPose.attachment ?? slot.pose.attachment
+        let image = try Self.loadImage(
+            pngFileName,
+            bundle: bundle
+        )
+
+        guard let cgImage = image.cgImage else {
+            throw SpineExternalAttachmentError.invalidImage
         }
 
-        guard let templateAttachment else {
-            throw SpineExternalAttachmentError.attachmentNotFound(
-                slot: slotName,
-                attachment: templateAttachmentName
-            )
-        }
-
-        guard let template = templateAttachment as? RegionAttachment else {
-            throw SpineExternalAttachmentError.templateIsNotRegionAttachment(templateAttachment.name)
-        }
+        let textureIndex = try renderer.registerTexture(image)
 
         let copied = template.copyAttachment() as! RegionAttachment
 
-        let image = try Self.loadImage(pngFileName, bundle: bundle)
-        let textureIndex = try renderer.registerTexture(image)
+        let runtimeRegion = TextureRegion()
+        runtimeRegion.u = 0
+        runtimeRegion.v = 0
+        runtimeRegion.u2 = 1
+        runtimeRegion.v2 = 1
+        runtimeRegion.regionWidth = Int32(cgImage.width)
+        runtimeRegion.regionHeight = Int32(cgImage.height)
+        runtimeRegion.setRendererObjectTextureIndex(textureIndex)
 
-        let runtimeRegion: TextureRegion
-        var ownedAtlas: Atlas?
+        copied.path = pngFileName
 
-        if let atlasFileName {
-            let atlasAndPages = try await Atlas.fromBundle(atlasFileName, bundle: bundle)
-            let externalAtlas = atlasAndPages.0
-            ownedAtlas = externalAtlas
-
-            let lookupName = regionName ?? (template.path.isEmpty ? template.name : template.path)
-
-            guard let atlasRegion = externalAtlas.findRegion(lookupName) else {
-                throw SpineExternalAttachmentError.atlasRegionNotFound(lookupName)
-            }
-
-            atlasRegion.setRendererObjectTextureIndex(textureIndex)
-
-            if let page = atlasRegion.page {
-                page.setTextureIndex(textureIndex)
-            } else {
-                throw SpineExternalAttachmentError.atlasPageNotFound
-            }
-
-            runtimeRegion = atlasRegion
-            copied.path = lookupName
-        } else {
-            guard let cgImage = image.cgImage else {
-                throw SpineExternalAttachmentError.invalidImage
-            }
-
-            let region = TextureRegion()
-            region.u = 0
-            region.v = 0
-            region.u2 = 1
-            region.v2 = 1
-            region.regionWidth = Int32(cgImage.width)
-            region.regionHeight = Int32(cgImage.height)
-            region.setRendererObjectTextureIndex(textureIndex)
-
-            runtimeRegion = region
-            copied.path = regionName ?? pngFileName
-
-            if !keepTemplateSize {
-                copied.width = Float(cgImage.width)
-                copied.height = Float(cgImage.height)
-            }
+        if !keepTemplateSize {
+            copied.width = Float(cgImage.width)
+            copied.height = Float(cgImage.height)
         }
 
-        copied.sequence.setSingleRegionAndUpdate(runtimeRegion, attachment: copied)
+        copied.sequence.setSingleRegionAndUpdate(
+            runtimeRegion,
+            attachment: copied
+        )
 
         slot.pose.attachment = copied
         slot.appliedPose.attachment = copied
 
-        externalAttachmentStore["\(slotName)::\(templateAttachmentName ?? "__current__")"] =
-            ExternalAttachmentHandle(
-                attachment: copied,
-                region: runtimeRegion,
-                image: image,
-                atlas: ownedAtlas
+        retainExternalAttachment(
+            slotName: slotName,
+            attachment: copied,
+            region: runtimeRegion,
+            images: [image],
+            atlas: nil,
+            textureIndices: [textureIndex]
+        )
+    }
+
+    @MainActor
+    @discardableResult
+    public func replaceRegionAttachmentFromAtlas(
+        slotName: String? = nil,
+        atlasFileName: String,
+        regionName: String? = nil,
+        pageImageFileNameOverride: String? = nil,
+        templateAttachmentName: String? = nil,
+        bundle: Bundle = .main,
+        keepTemplateSize: Bool = true
+    ) async throws -> [String] {
+        guard let renderer else {
+            throw SpineExternalAttachmentError.rendererNotReady
+        }
+
+        let atlasAndImages = try await Self.loadAtlasAndPageImages(
+            atlasFileName: atlasFileName,
+            pageImageFileNameOverride: pageImageFileNameOverride,
+            bundle: bundle
+        )
+
+        let runtimeAtlas = atlasAndImages.atlas
+        let pageImages = atlasAndImages.images
+        let textureIndices = try renderer.registerTextures(pageImages)
+
+        try Self.bindAtlasPagesAndRegions(
+            atlas: runtimeAtlas,
+            textureIndices: textureIndices
+        )
+
+        if let slotName {
+            guard let slot = skeleton.findSlot(slotName) else {
+                throw SpineExternalAttachmentError.slotNotFound(slotName)
+            }
+
+            let template = try resolveTemplateRegionAttachment(
+                slotName: slotName,
+                slot: slot,
+                templateAttachmentName: templateAttachmentName,
+                matchedRegionName: regionName
             )
+
+            let selectedRegion = try Self.resolveAtlasRegion(
+                atlas: runtimeAtlas,
+                regionName: regionName,
+                template: template
+            )
+
+            try applyAtlasReplacement(
+                slotName: slotName,
+                slot: slot,
+                template: template,
+                region: selectedRegion,
+                runtimeAtlas: runtimeAtlas,
+                pageImages: pageImages,
+                textureIndices: textureIndices,
+                keepTemplateSize: keepTemplateSize
+            )
+
+            return [slotName]
+        }
+
+        if regionName != nil {
+            throw SpineExternalAttachmentError.regionNameRequiresSlot
+        }
+
+        let targets = try collectAtlasReplacementTargets(
+            atlas: runtimeAtlas,
+            templateAttachmentName: templateAttachmentName
+        )
+
+        guard !targets.isEmpty else {
+            throw SpineExternalAttachmentError.noMatchingSlotsForAtlas(atlasFileName)
+        }
+
+        for target in targets {
+            try applyAtlasReplacement(
+                slotName: target.slotName,
+                slot: target.slot,
+                template: target.template,
+                region: target.region,
+                runtimeAtlas: runtimeAtlas,
+                pageImages: pageImages,
+                textureIndices: textureIndices,
+                keepTemplateSize: keepTemplateSize
+            )
+        }
+
+        return targets.map { $0.slotName }
     }
 
-    private static func loadImage(_ nameOrPath: String, bundle: Bundle) throws -> UIImage {
-        if let image = UIImage(named: nameOrPath, in: bundle, compatibleWith: nil) {
+    private func collectAtlasReplacementTargets(
+        atlas: Atlas,
+        templateAttachmentName: String?
+    ) throws -> [AtlasReplacementTarget] {
+        let regions = atlas.regions
+        var targets: [AtlasReplacementTarget] = []
+        var usedSlotNames = Set<String>()
+        var matchedRegionIndices = Set<Int>()
+
+        /*
+         第一轮：严格优先 region.name 匹配 slot.data.name。
+         例如 atlas 里有 Toufa_Zhong，Skeleton 里也有 slot Toufa_Zhong，
+         这种是最明确的对应关系，优先处理。
+         */
+        for index in 0..<regions.count {
+            guard let region = regions[index] else {
+                continue
+            }
+
+            guard !region.name.isEmpty else {
+                continue
+            }
+
+            if let target = try resolveExactSlotTarget(
+                for: region,
+                templateAttachmentName: templateAttachmentName,
+                usedSlotNames: usedSlotNames
+            ) {
+                targets.append(target)
+                usedSlotNames.insert(target.slotName)
+                matchedRegionIndices.insert(index)
+            }
+        }
+
+        /*
+         第二轮：没有直接同名 slot 的 region，
+         再尝试匹配当前 attachment.path、attachment.name、setup attachmentName，
+         或 skeleton.getAttachment(slotName, region.name)。
+         */
+        for index in 0..<regions.count {
+            if matchedRegionIndices.contains(index) {
+                continue
+            }
+
+            guard let region = regions[index] else {
+                continue
+            }
+
+            guard !region.name.isEmpty else {
+                continue
+            }
+
+            if let target = try resolveCompatibleSlotTarget(
+                for: region,
+                templateAttachmentName: templateAttachmentName,
+                usedSlotNames: usedSlotNames
+            ) {
+                targets.append(target)
+                usedSlotNames.insert(target.slotName)
+                matchedRegionIndices.insert(index)
+            }
+        }
+
+        return targets
+    }
+
+    private func resolveExactSlotTarget(
+        for region: AtlasRegion,
+        templateAttachmentName: String?,
+        usedSlotNames: Set<String>
+    ) throws -> AtlasReplacementTarget? {
+        let regionNameCandidates = Self.nameCandidates(for: region.name)
+
+        for candidate in regionNameCandidates {
+            guard let slot = skeleton.findSlot(candidate) else {
+                continue
+            }
+
+            let slotName = slot.data.name
+
+            if usedSlotNames.contains(slotName) {
+                continue
+            }
+
+            let template = try resolveTemplateRegionAttachment(
+                slotName: slotName,
+                slot: slot,
+                templateAttachmentName: templateAttachmentName,
+                matchedRegionName: region.name
+            )
+
+            return AtlasReplacementTarget(
+                slotName: slotName,
+                slot: slot,
+                template: template,
+                region: region
+            )
+        }
+
+        return nil
+    }
+
+    private func resolveCompatibleSlotTarget(
+        for region: AtlasRegion,
+        templateAttachmentName: String?,
+        usedSlotNames: Set<String>
+    ) throws -> AtlasReplacementTarget? {
+        let regionNameCandidates = Self.nameCandidates(for: region.name)
+        let slots = skeleton.slots
+
+        for index in 0..<slots.count {
+            guard let slot = slots[index] else {
+                continue
+            }
+
+            let slotName = slot.data.name
+
+            if usedSlotNames.contains(slotName) {
+                continue
+            }
+
+            let matchesBySlotPose = Self.slot(
+                slot,
+                matchesAnyRegionNameCandidate: regionNameCandidates
+            )
+
+            let matchesBySkeletonAttachment = hasAttachment(
+                slotName: slotName,
+                attachmentNameCandidates: regionNameCandidates
+            )
+
+            guard matchesBySlotPose || matchesBySkeletonAttachment else {
+                continue
+            }
+
+            let template = try resolveTemplateRegionAttachment(
+                slotName: slotName,
+                slot: slot,
+                templateAttachmentName: templateAttachmentName,
+                matchedRegionName: region.name
+            )
+
+            return AtlasReplacementTarget(
+                slotName: slotName,
+                slot: slot,
+                template: template,
+                region: region
+            )
+        }
+
+        return nil
+    }
+
+    private func hasAttachment(
+        slotName: String,
+        attachmentNameCandidates: [String]
+    ) -> Bool {
+        for attachmentName in attachmentNameCandidates {
+            if skeleton.getAttachment(slotName, attachmentName) != nil {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    private static func slot(
+        _ slot: Slot,
+        matchesAnyRegionNameCandidate regionNameCandidates: [String]
+    ) -> Bool {
+        let slotCandidates = slotMatchCandidateNames(for: slot)
+
+        for slotCandidate in slotCandidates {
+            for regionCandidate in regionNameCandidates {
+                if slotCandidate == regionCandidate {
+                    return true
+                }
+            }
+        }
+
+        return false
+    }
+
+    private static func slotMatchCandidateNames(for slot: Slot) -> [String] {
+        var result: [String] = []
+        var seen = Set<String>()
+
+        func appendCandidates(_ value: String) {
+            for candidate in nameCandidates(for: value) {
+                guard !candidate.isEmpty else {
+                    continue
+                }
+
+                guard !seen.contains(candidate) else {
+                    continue
+                }
+
+                seen.insert(candidate)
+                result.append(candidate)
+            }
+        }
+
+        let currentAttachment = slot.appliedPose.attachment ?? slot.pose.attachment
+
+        if let currentRegionAttachment = currentAttachment as? RegionAttachment {
+            appendCandidates(currentRegionAttachment.path)
+        }
+
+        if let currentAttachment {
+            appendCandidates(currentAttachment.name)
+        }
+
+        appendCandidates(slot.data.attachmentName)
+        appendCandidates(slot.data.name)
+
+        return result
+    }
+
+    private static func nameCandidates(for rawName: String) -> [String] {
+        var result: [String] = []
+        var seen = Set<String>()
+
+        func append(_ value: String) {
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            guard !trimmed.isEmpty else {
+                return
+            }
+
+            guard !seen.contains(trimmed) else {
+                return
+            }
+
+            seen.insert(trimmed)
+            result.append(trimmed)
+        }
+
+        append(rawName)
+
+        let nsRaw = rawName as NSString
+        append(nsRaw.deletingPathExtension)
+
+        let lastPathComponent = nsRaw.lastPathComponent
+        append(lastPathComponent)
+
+        let nsLastPathComponent = lastPathComponent as NSString
+        append(nsLastPathComponent.deletingPathExtension)
+
+        return result
+    }
+
+    private func resolveTemplateRegionAttachment(
+        slotName: String,
+        slot: Slot,
+        templateAttachmentName: String?,
+        matchedRegionName: String?
+    ) throws -> RegionAttachment {
+        if let templateAttachmentName {
+            guard let attachment = skeleton.getAttachment(slotName, templateAttachmentName) else {
+                throw SpineExternalAttachmentError.attachmentNotFound(
+                    slot: slotName,
+                    attachment: templateAttachmentName
+                )
+            }
+
+            guard let regionAttachment = attachment as? RegionAttachment else {
+                throw SpineExternalAttachmentError.templateIsNotRegionAttachment(
+                    attachment.name
+                )
+            }
+
+            return regionAttachment
+        }
+
+        if let current = slot.appliedPose.attachment ?? slot.pose.attachment {
+            if let regionAttachment = current as? RegionAttachment {
+                return regionAttachment
+            }
+        }
+
+        if let matchedRegionName {
+            let attachmentNameCandidates = Self.nameCandidates(for: matchedRegionName)
+
+            for attachmentName in attachmentNameCandidates {
+                guard let attachment = skeleton.getAttachment(slotName, attachmentName) else {
+                    continue
+                }
+
+                guard let regionAttachment = attachment as? RegionAttachment else {
+                    throw SpineExternalAttachmentError.templateIsNotRegionAttachment(
+                        attachment.name
+                    )
+                }
+
+                return regionAttachment
+            }
+        }
+
+        let setupAttachmentName = slot.data.attachmentName
+
+        if !setupAttachmentName.isEmpty,
+           let attachment = skeleton.getAttachment(slotName, setupAttachmentName) {
+            guard let regionAttachment = attachment as? RegionAttachment else {
+                throw SpineExternalAttachmentError.templateIsNotRegionAttachment(
+                    attachment.name
+                )
+            }
+
+            return regionAttachment
+        }
+
+        throw SpineExternalAttachmentError.attachmentNotFound(
+            slot: slotName,
+            attachment: matchedRegionName ?? setupAttachmentName
+        )
+    }
+
+    private func applyAtlasReplacement(
+        slotName: String,
+        slot: Slot,
+        template: RegionAttachment,
+        region: AtlasRegion,
+        runtimeAtlas: Atlas,
+        pageImages: [UIImage],
+        textureIndices: [Int],
+        keepTemplateSize: Bool
+    ) throws {
+        let copied = template.copyAttachment() as! RegionAttachment
+
+        copied.path = region.name
+
+        if !keepTemplateSize {
+            let logicalWidth = region.originalWidth > 0
+                ? region.originalWidth
+                : region.regionWidth
+
+            let logicalHeight = region.originalHeight > 0
+                ? region.originalHeight
+                : region.regionHeight
+
+            copied.width = Float(logicalWidth)
+            copied.height = Float(logicalHeight)
+        }
+
+        copied.sequence.setSingleRegionAndUpdate(
+            region,
+            attachment: copied
+        )
+
+        slot.pose.attachment = copied
+        slot.appliedPose.attachment = copied
+
+        retainExternalAttachment(
+            slotName: slotName,
+            attachment: copied,
+            region: region,
+            images: pageImages,
+            atlas: runtimeAtlas,
+            textureIndices: textureIndices
+        )
+    }
+
+    private static func bundleOrFileURL(
+        _ nameOrPath: String,
+        bundle: Bundle,
+        notFound: SpineExternalAttachmentError
+    ) throws -> URL {
+        let fileURL = URL(fileURLWithPath: nameOrPath)
+
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            return fileURL
+        }
+
+        let nsName = nameOrPath as NSString
+        let resourceName = nsName.deletingPathExtension
+        let resourceExtension = nsName.pathExtension
+
+        if !resourceName.isEmpty,
+           !resourceExtension.isEmpty,
+           let bundleURL = bundle.url(
+                forResource: resourceName,
+                withExtension: resourceExtension
+           ) {
+            return bundleURL
+        }
+
+        throw notFound
+    }
+
+    private static func loadImage(
+        _ nameOrPath: String,
+        bundle: Bundle
+    ) throws -> UIImage {
+        if let image = UIImage(
+            named: nameOrPath,
+            in: bundle,
+            compatibleWith: nil
+        ) {
             return image
         }
 
-        let url = URL(fileURLWithPath: nameOrPath)
-        if let image = UIImage(contentsOfFile: url.path) {
-            return image
+        let url = try bundleOrFileURL(
+            nameOrPath,
+            bundle: bundle,
+            notFound: .imageNotFound(nameOrPath)
+        )
+
+        guard let image = UIImage(contentsOfFile: url.path) else {
+            throw SpineExternalAttachmentError.invalidImage
         }
 
-        throw SpineExternalAttachmentError.imageNotFound(nameOrPath)
+        return image
     }
 
+    private static func loadAtlasAndPageImages(
+        atlasFileName: String,
+        pageImageFileNameOverride: String?,
+        bundle: Bundle
+    ) async throws -> (atlas: Atlas, images: [UIImage]) {
+        if let pageImageFileNameOverride {
+            let atlas = try loadAtlasOnly(
+                atlasFileName,
+                bundle: bundle
+            )
+
+            let pageCount = atlas.pages.count
+
+            guard pageCount == 1 else {
+                atlas.dispose()
+                throw SpineExternalAttachmentError
+                    .singlePageImageOverrideUsedForMultiPageAtlas(pageCount: pageCount)
+            }
+
+            let image = try loadImage(
+                pageImageFileNameOverride,
+                bundle: bundle
+            )
+
+            return (atlas, [image])
+        }
+
+        return try await Atlas.fromBundle(
+            atlasFileName,
+            bundle: bundle
+        )
+    }
+
+    private static func loadAtlasOnly(
+        _ atlasFileName: String,
+        bundle: Bundle
+    ) throws -> Atlas {
+        let url = try bundleOrFileURL(
+            atlasFileName,
+            bundle: bundle,
+            notFound: .atlasFileNotFound(atlasFileName)
+        )
+
+        let data = try Data(contentsOf: url)
+
+        guard let atlasString = String(data: data, encoding: .utf8) else {
+            throw SpineExternalAttachmentError.invalidAtlasString(atlasFileName)
+        }
+
+        return try loadAtlas(atlasString)
+    }
+
+    private static func bindAtlasPagesAndRegions(
+        atlas: Atlas,
+        textureIndices: [Int]
+    ) throws {
+        let pages = atlas.pages
+
+        guard pages.count > 0 else {
+            throw SpineExternalAttachmentError.atlasHasNoPages("")
+        }
+
+        guard pages.count == textureIndices.count else {
+            throw SpineExternalAttachmentError.atlasPageImageCountMismatch(
+                pages: pages.count,
+                images: textureIndices.count
+            )
+        }
+
+        let regions = atlas.regions
+
+        for pageIndex in 0..<pages.count {
+            guard let page = pages[pageIndex] else {
+                throw SpineExternalAttachmentError.atlasPageNotFound
+            }
+
+            let textureIndex = textureIndices[pageIndex]
+
+            page.setTextureIndex(textureIndex)
+
+            for regionIndex in 0..<regions.count {
+                guard
+                    let region = regions[regionIndex],
+                    let regionPage = region.page
+                else {
+                    continue
+                }
+
+                if regionPage._ptr == page._ptr {
+                    region.setRendererObjectTextureIndex(textureIndex)
+                }
+            }
+        }
+    }
+
+    private static func resolveAtlasRegion(
+        atlas: Atlas,
+        regionName: String?,
+        template: RegionAttachment
+    ) throws -> AtlasRegion {
+        if let regionName, !regionName.isEmpty {
+            let regionNameCandidates = nameCandidates(for: regionName)
+
+            for candidate in regionNameCandidates {
+                if let region = atlas.findRegion(candidate) {
+                    return region
+                }
+            }
+
+            throw SpineExternalAttachmentError.atlasRegionNotFound(regionName)
+        }
+
+        if !template.path.isEmpty {
+            let pathCandidates = nameCandidates(for: template.path)
+
+            for candidate in pathCandidates {
+                if let region = atlas.findRegion(candidate) {
+                    return region
+                }
+            }
+        }
+
+        let nameCandidates = nameCandidates(for: template.name)
+
+        for candidate in nameCandidates {
+            if let region = atlas.findRegion(candidate) {
+                return region
+            }
+        }
+
+        let regions = atlas.regions
+
+        if regions.count == 1, let onlyRegion = regions[0] {
+            return onlyRegion
+        }
+
+        throw SpineExternalAttachmentError.atlasRegionNameRequired
+    }
 }
