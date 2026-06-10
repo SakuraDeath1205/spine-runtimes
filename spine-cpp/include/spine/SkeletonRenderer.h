@@ -49,6 +49,8 @@ namespace spine {
 		void *texture;
 		RenderCommand *next;
 		float *bleaches;
+		int32_t slotIndex;
+		const char *slotName;
 	};
 
 	class SP_API SkeletonRenderer : public SpineObject {
@@ -58,8 +60,11 @@ namespace spine {
 		~SkeletonRenderer();
 
 		RenderCommand *render(Skeleton &skeleton);
+		RenderCommand *renderUnbatched(Skeleton &skeleton);
 
 	private:
+		RenderCommand *renderInternal(Skeleton &skeleton, bool shouldBatch);
+
 		BlockAllocator _allocator;
 		Array<float> _worldVertices;
 		Array<unsigned short> _quadIndices;

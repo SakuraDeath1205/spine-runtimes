@@ -123,6 +123,14 @@ public class SkeletonDrawable {
         return RenderCommand(fromPointer: renderCommand)
     }
 
+    public func renderUnbatched() -> RenderCommand? {
+        guard let renderCommand = spine_skeleton_drawable_render_unbatched(_drawable) else {
+            return nil
+        }
+
+        return RenderCommand(fromPointer: renderCommand)
+    }
+
     deinit {
         AnimationStateEventManager.instance.clearState(animationState)
         spine_skeleton_drawable_dispose(_drawable)

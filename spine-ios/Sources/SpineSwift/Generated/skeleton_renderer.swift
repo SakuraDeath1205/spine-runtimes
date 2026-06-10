@@ -53,6 +53,11 @@ public class SkeletonRenderer: NSObject {
         return result.map { RenderCommand(fromPointer: $0) }
     }
 
+    public func renderUnbatched(_ skeleton: Skeleton) -> RenderCommand? {
+        let result = spine_skeleton_renderer_render_unbatched(_ptr.assumingMemoryBound(to: spine_skeleton_renderer_wrapper.self), skeleton._ptr.assumingMemoryBound(to: spine_skeleton_wrapper.self))
+        return result.map { RenderCommand(fromPointer: $0) }
+    }
+
     public func dispose() {
         spine_skeleton_renderer_dispose(_ptr.assumingMemoryBound(to: spine_skeleton_renderer_wrapper.self))
     }

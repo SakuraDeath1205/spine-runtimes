@@ -15,3 +15,8 @@ void spine_skeleton_renderer_dispose(spine_skeleton_renderer self) {
     SkeletonRenderer *_self = (SkeletonRenderer *) self;
 	return (spine_render_command)_self->render(*((Skeleton*)skeleton));
 }
+
+/*@null*/ spine_render_command spine_skeleton_renderer_render_unbatched(spine_skeleton_renderer self, spine_skeleton skeleton) {
+    SkeletonRenderer *_self = (SkeletonRenderer *) self;
+	return (spine_render_command)_self->renderUnbatched(*((Skeleton*)skeleton));
+}

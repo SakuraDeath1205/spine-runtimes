@@ -61,3 +61,13 @@ spine_blend_mode spine_render_command_get_blend_mode(spine_render_command self) 
     RenderCommand *_self = (RenderCommand *) self;
 	return _self->bleaches;
 }
+
+int32_t spine_render_command_get_slot_index(spine_render_command self) {
+    RenderCommand *_self = (RenderCommand *) self;
+	return _self->slotIndex;
+}
+
+/*@null*/ const char * spine_render_command_get_slot_name(spine_render_command self) {
+    RenderCommand *_self = (RenderCommand *) self;
+	return _self->slotName;
+}

@@ -46,7 +46,8 @@ protocol SpineRendererDelegate: AnyObject {
 
 protocol SpineRendererDataSource: AnyObject {
     func isPlaying(_ spineRenderer: SpineRenderer) -> Bool
-    func renderCommands(_ spineRenderer: SpineRenderer) -> [RenderCommand]
+//     func renderCommands(_ spineRenderer: SpineRenderer) -> [RenderCommand]
+    func renderItems(_ spineRenderer: SpineRenderer) -> [SpineRenderItem]
 }
 
 internal final class SpineRenderer: NSObject, MTKViewDelegate {
@@ -159,20 +160,16 @@ internal final class SpineRenderer: NSObject, MTKViewDelegate {
         bufferingSemaphore.wait()
         currentBufferIndex = (currentBufferIndex + 1) % SpineRenderer.numberOfBuffers
 
-        guard let renderCommands = dataSource?.renderCommands(self),
+        guard let renderItems = dataSource?.renderItems(self),
             let commandBuffer = commandQueue.makeCommandBuffer(),
             let renderPassDescriptor = view.currentRenderPassDescriptor,
-            let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)
-        else {
-            // this can happen if,
-            // - CAMetalLayer is configured with drawable timeout, and CAMetalLayer is run out of Drawable
-            // - CAMetalLayer is added to the window with frame size of zero or incorrect layout constraint -> currentRenderPassDescriptor is null
+            let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {
             bufferingSemaphore.signal()
             return
         }
 
         delegate?.spineRendererWillDraw(self)
-        draw(renderCommands: renderCommands, renderEncoder: renderEncoder, in: view)
+        draw(renderItems: renderItems, renderEncoder: renderEncoder, in: view)
         delegate?.spineRendererDidDraw(self)
 
         renderEncoder.endEncoding()
@@ -187,6 +184,79 @@ internal final class SpineRenderer: NSObject, MTKViewDelegate {
             commandBuffer.waitUntilCompleted()
         }
     }
+
+private func draw(
+    renderItems: [SpineRenderItem],
+    renderEncoder: MTLRenderCommandEncoder,
+    in view: MTKView
+) {
+    var preparedSpineVertices = [[SpineVertex]]()
+    var requiredVerticesSize = 0
+
+    for item in renderItems {
+        switch item {
+        case .spine(let command):
+            let vertices = Array(command.getVertices())
+            preparedSpineVertices.append(vertices)
+
+            requiredVerticesSize = alignedMetalBufferOffset(requiredVerticesSize)
+            requiredVerticesSize += MemoryLayout<SpineVertex>.stride * vertices.count
+
+        case .externalTexture:
+            break
+        }
+    }
+
+    requiredVerticesSize = alignedMetalBufferOffset(requiredVerticesSize)
+
+    var vertexBuffer: MTLBuffer?
+
+    if requiredVerticesSize > 0 {
+        var buffer = buffers[currentBufferIndex]
+
+        if buffer.length < requiredVerticesSize {
+            increaseBuffersSize(to: requiredVerticesSize)
+            buffer = buffers[currentBufferIndex]
+        }
+
+        vertexBuffer = buffer
+    }
+
+    beginDraw(renderEncoder: renderEncoder)
+
+    var vertexBufferOffset = 0
+    var spineVertexIndex = 0
+
+    for item in renderItems {
+        switch item {
+        case .spine(let command):
+            guard let vertexBuffer else {
+                continue
+            }
+
+            let vertices = preparedSpineVertices[spineVertexIndex]
+            spineVertexIndex += 1
+
+            vertexBufferOffset = alignedMetalBufferOffset(vertexBufferOffset)
+
+            vertexBufferOffset = drawSpineCommand(
+                command,
+                vertices: vertices,
+                vertexBuffer: vertexBuffer,
+                vertexBufferOffset: vertexBufferOffset,
+                renderEncoder: renderEncoder
+            )
+
+        case .externalTexture(let externalTexture):
+//            drawExternalTexture(
+//                externalTexture,
+//                renderEncoder: renderEncoder
+//            )
+            print("exteranl texture")
+        }
+    }
+}
+
 
     private func setTransform(bounds: CGRect, mode: SpineContentMode, alignment: SpineAlignment) {
         let x = -bounds.minX - bounds.width / 2.0
@@ -234,25 +304,53 @@ internal final class SpineRenderer: NSObject, MTKViewDelegate {
         delegate?.spineRendererDidUpdate(self)
     }
 
-    private func draw(renderCommands: [RenderCommand], renderEncoder: MTLRenderCommandEncoder, in view: MTKView) {
-        let allVertices = renderCommands.map { renderCommand in
-            Array(renderCommand.getVertices())
-        }
-        let vertices = allVertices.flatMap { $0 }
-        let verticesSize = MemoryLayout<SpineVertex>.stride * vertices.count
+    // private func draw(
+    //     renderCommands: [RenderCommand],
+    //     renderEncoder: MTLRenderCommandEncoder,
+    //     in view: MTKView
+    // ) {
+    //     let commandVertices = renderCommands.map { renderCommand in
+    //         (renderCommand, Array(renderCommand.getVertices()))
+    //     }
 
-        guard verticesSize > 0 else {
-            return
-        }
+    //     var requiredVerticesSize = 0
 
-        var vertexBuffer = buffers[currentBufferIndex]
-        var vertexBufferSize = vertexBuffer.length
+    //     for pair in commandVertices {
+    //         requiredVerticesSize = alignedMetalBufferOffset(requiredVerticesSize)
+    //         requiredVerticesSize += MemoryLayout<SpineVertex>.stride * pair.1.count
+    //     }
 
-        if vertexBufferSize < verticesSize {
-            increaseBuffersSize(to: verticesSize)
-            vertexBuffer = buffers[currentBufferIndex]
-        }
+    //     requiredVerticesSize = alignedMetalBufferOffset(requiredVerticesSize)
 
+    //     guard requiredVerticesSize > 0 else {
+    //         return
+    //     }
+
+    //     var vertexBuffer = buffers[currentBufferIndex]
+
+    //     if vertexBuffer.length < requiredVerticesSize {
+    //         increaseBuffersSize(to: requiredVerticesSize)
+    //         vertexBuffer = buffers[currentBufferIndex]
+    //     }
+
+    //     beginDraw(renderEncoder: renderEncoder)
+
+    //     var vertexBufferOffset = 0
+
+    //     for pair in commandVertices {
+    //         vertexBufferOffset = alignedMetalBufferOffset(vertexBufferOffset)
+
+    //         vertexBufferOffset = drawSpineCommand(
+    //             pair.0,
+    //             vertices: pair.1,
+    //             vertexBuffer: vertexBuffer,
+    //             vertexBufferOffset: vertexBufferOffset,
+    //             renderEncoder: renderEncoder
+    //         )
+    //     }
+    // }
+
+    private func beginDraw(renderEncoder: MTLRenderCommandEncoder) {
         renderEncoder.setViewport(
             MTLViewport(
                 originX: 0.0,
@@ -264,51 +362,76 @@ internal final class SpineRenderer: NSObject, MTKViewDelegate {
             )
         )
 
-        memcpy(vertexBuffer.contents(), vertices, verticesSize)
-
-        renderEncoder.setVertexBuffer(
-            vertexBuffer,
-            offset: 0,
-            index: Int(SpineVertexInputIndexVertices.rawValue)
-        )
         renderEncoder.setVertexBytes(
             &transform,
             length: MemoryLayout.size(ofValue: transform),
             index: Int(SpineVertexInputIndexTransform.rawValue)
         )
+
         renderEncoder.setVertexBytes(
             &viewPortSize,
             length: MemoryLayout.size(ofValue: viewPortSize),
             index: Int(SpineVertexInputIndexViewportSize.rawValue)
         )
+    }
 
-        // Buffer Bindings
-        // https://developer.apple.com/library/archive/documentation/3DDrawing/Conceptual/MTLBestPracticesGuide/BufferBindings.html#//apple_ref/doc/uid/TP40016642-CH28-SW3
-        var vertexStart = 0
-        for (index, renderCommand) in renderCommands.enumerated() {
-            guard let pipelineState = getPipelineState(blendMode: renderCommand.blendMode) else {
-                continue
-            }
-            renderEncoder.setRenderPipelineState(pipelineState)
+    private func alignedMetalBufferOffset(_ value: Int) -> Int {
+        let alignment = 256
+        return (value + alignment - 1) & ~(alignment - 1)
+    }
 
-            let vertices = allVertices[index]
+    @discardableResult
+    private func drawSpineCommand(
+        _ renderCommand: RenderCommand,
+        vertices: [SpineVertex],
+        vertexBuffer: MTLBuffer,
+        vertexBufferOffset: Int,
+        renderEncoder: MTLRenderCommandEncoder
+    ) -> Int {
+        let alignedOffset = alignedMetalBufferOffset(vertexBufferOffset)
+        let verticesSize = MemoryLayout<SpineVertex>.stride * vertices.count
 
-            // When using spine_atlas_load, texture is actually the atlas page index cast as a pointer
-            let textureIndex = Int(bitPattern: renderCommand.texture)
-            if textures.indices.contains(textureIndex) {
-                renderEncoder.setFragmentTexture(
-                    textures[textureIndex],
-                    index: Int(SpineTextureIndexBaseColor.rawValue)
-                )
-            }
-
-            renderEncoder.drawPrimitives(
-                type: .triangle,
-                vertexStart: vertexStart,
-                vertexCount: vertices.count
-            )
-            vertexStart += vertices.count
+        guard verticesSize > 0 else {
+            return alignedOffset
         }
+
+        vertices.withUnsafeBytes { rawBufferPointer in
+            guard let baseAddress = rawBufferPointer.baseAddress else {
+                return
+            }
+
+            let destination = vertexBuffer.contents().advanced(by: alignedOffset)
+            memcpy(destination, baseAddress, verticesSize)
+        }
+
+        guard let pipelineState = getPipelineState(blendMode: renderCommand.blendMode) else {
+            return alignedMetalBufferOffset(alignedOffset + verticesSize)
+        }
+
+        renderEncoder.setRenderPipelineState(pipelineState)
+
+        renderEncoder.setVertexBuffer(
+            vertexBuffer,
+            offset: alignedOffset,
+            index: Int(SpineVertexInputIndexVertices.rawValue)
+        )
+
+        let textureIndex = Int(bitPattern: renderCommand.texture)
+
+        if textures.indices.contains(textureIndex) {
+            renderEncoder.setFragmentTexture(
+                textures[textureIndex],
+                index: Int(SpineTextureIndexBaseColor.rawValue)
+            )
+        }
+
+        renderEncoder.drawPrimitives(
+            type: .triangle,
+            vertexStart: 0,
+            vertexCount: vertices.count
+        )
+
+        return alignedMetalBufferOffset(alignedOffset + verticesSize)
     }
 
     private func getPipelineState(blendMode: BlendMode) -> MTLRenderPipelineState? {

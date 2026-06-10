@@ -354,6 +354,15 @@ spine_render_command spine_skeleton_drawable_render(spine_skeleton_drawable draw
 	return (spine_render_command) commands;
 }
 
+spine_render_command spine_skeleton_drawable_render_unbatched(spine_skeleton_drawable drawable) {
+	if (!drawable) return nullptr;
+	_spine_skeleton_drawable *_drawable = (_spine_skeleton_drawable *) drawable;
+	Skeleton *skeleton = (Skeleton *) _drawable->skeleton;
+	SkeletonRenderer *renderer = _drawable->renderer;
+	RenderCommand *commands = renderer->renderUnbatched(*skeleton);
+	return (spine_render_command) commands;
+}
+
 void spine_skeleton_drawable_dispose(spine_skeleton_drawable drawable) {
 	if (!drawable) return;
 	_spine_skeleton_drawable *_drawable = (_spine_skeleton_drawable *) drawable;

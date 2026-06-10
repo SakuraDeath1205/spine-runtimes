@@ -14,6 +14,7 @@ SPINE_C_API spine_skeleton_renderer spine_skeleton_renderer_create(void);
 SPINE_C_API void spine_skeleton_renderer_dispose(spine_skeleton_renderer self);
 
 SPINE_C_API /*@null*/ spine_render_command spine_skeleton_renderer_render(spine_skeleton_renderer self, spine_skeleton skeleton);
+SPINE_C_API /*@null*/ spine_render_command spine_skeleton_renderer_render_unbatched(spine_skeleton_renderer self, spine_skeleton skeleton);
 
 #ifdef __cplusplus
 }

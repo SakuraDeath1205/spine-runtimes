@@ -81,7 +81,7 @@ public final class SpineController: NSObject, ObservableObject {
 
     internal weak var renderer: SpineRenderer?
     private var externalAttachmentStore: [String: ExternalAttachmentHandle] = [:]
-
+    public var slotTextureAnchors: [String: SpineSlotTextureAnchor] = [:]
 
     @Published
     public private(set) var isPlaying: Bool = true
@@ -262,19 +262,59 @@ extension SpineController: SpineRendererDataSource {
         return drawable
     }
 
-    func renderCommands(_ spineRenderer: SpineRenderer) -> [RenderCommand] {
-        guard let drawable = drawable else { return [] }
+    // func renderCommands(_ spineRenderer: SpineRenderer) -> [RenderCommand] {
+    //     guard let drawable = drawable else { return [] }
 
-        var commands = [RenderCommand]()
-        var current = drawable.skeletonDrawable.render()
-        while let cmd = current {
-            commands.append(cmd)
-            current = cmd.next
+    //     var commands = [RenderCommand]()
+    //     var current = drawable.skeletonDrawable.renderUnbatched()
+    //     while let cmd = current {
+    //         print("slotIndex:", cmd.slotIndex)
+    //         commands.append(cmd)
+    //         current = cmd.next
+    //     }
+    //     return commands
+    // }
+    func renderItems(_ spineRenderer: SpineRenderer) -> [SpineRenderItem] {
+        guard let drawable = drawable else {
+            return []
         }
-        return commands
+
+        var items = [SpineRenderItem]()
+        var current = drawable.skeletonDrawable.renderUnbatched()
+
+        var anchorsBySlotIndex = [Int32: SpineSlotTextureAnchor]()
+
+        for anchor in slotTextureAnchors.values {
+            if let slot = skeleton.findSlot(anchor.slotName) {
+                anchorsBySlotIndex[slot.data.index] = anchor
+            }
+        }
+
+        while let command = current {
+            if let anchor = anchorsBySlotIndex[command.slotIndex] {
+                items.append(
+                    .externalTexture(
+                        SpineExternalTexture(
+                            anchorSlotIndex: command.slotIndex,
+                            texture: anchor.texture,
+                            width: anchor.width,
+                            height: anchor.height,
+                            offsetX: anchor.offsetX,
+                            offsetY: anchor.offsetY
+                        )
+                    )
+                )
+            }
+
+            items.append(.spine(command))
+            current = command.next
+        }
+
+        return items
     }
 }
 
+// MARK: ExternalAttachment
 private final class ExternalAttachmentHandle {
     let attachment: Attachment
     let region: TextureRegion
@@ -1120,4 +1160,48 @@ extension SpineController {
         return nil
     }
 
+}
+
+// MARK: Modify Slot Order
+public final class SpineSlotTextureAnchor {
+    public let slotName: String
+    public let texture: MTLTexture
+    public let width: Float
+    public let height: Float
+    public let offsetX: Float
+    public let offsetY: Float
+
+    public init(
+        slotName: String,
+        texture: MTLTexture,
+        width: Float,
+        height: Float,
+        offsetX: Float = 0,
+        offsetY: Float = 0
+    ) {
+        self.slotName = slotName
+        self.texture = texture
+        self.width = width
+        self.height = height
+        self.offsetX = offsetX
+        self.offsetY = offsetY
+    }
+}
+
+extension SpineController {
+    public func slotIndex(_ slotName: String) -> Int32? {
+        guard let slot = skeleton.findSlot(slotName) else {
+            return nil
+        }
+
+        return slot.data.index
+    }
+
+    public func setSlotTextureAnchor(_ anchor: SpineSlotTextureAnchor) {
+        slotTextureAnchors[anchor.slotName] = anchor
+    }
+
+    public func removeSlotTextureAnchor(_ slotName: String) {
+        slotTextureAnchors.removeValue(forKey: slotName)
+    }
 }

@@ -98,6 +98,16 @@ public class RenderCommand: NSObject {
         return result
     }
 
+    public var slotIndex: Int32 {
+        let result = spine_render_command_get_slot_index(_ptr.assumingMemoryBound(to: spine_render_command_wrapper.self))
+        return result
+    }
+
+    public var slotName: String? {
+        let result = spine_render_command_get_slot_name(_ptr.assumingMemoryBound(to: spine_render_command_wrapper.self))
+        return result.map { String(cString: $0) }
+    }
+
     public func dispose() {
         spine_render_command_dispose(_ptr.assumingMemoryBound(to: spine_render_command_wrapper.self))
     }
