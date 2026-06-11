@@ -1497,3 +1497,25 @@ extension SpineController {
     }
 }
 
+// MARK: Exteranl Spine Attachment
+extension SpineController {
+    @MainActor
+    @discardableResult
+    public func registerExternalAtlasForCopiedAttachments(
+        atlas: Atlas,
+        images: [UIImage]
+    ) throws -> [Int] {
+        guard let renderer else {
+            throw SpineExternalAttachmentError.rendererNotReady
+        }
+
+        let textureIndices = try renderer.registerTextures(images)
+
+        try Self.bindAtlasPagesAndRegions(
+            atlas: atlas,
+            textureIndices: textureIndices
+        )
+
+        return textureIndices
+    }
+}
