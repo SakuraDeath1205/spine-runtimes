@@ -32,6 +32,8 @@ import Foundation
 import QuartzCore
 import SpineSwift
 import UIKit
+import simd
+import SpineShadersStructs
 
 public typealias SpineControllerCallback = (_ controller: SpineController) -> Void
 
@@ -82,6 +84,9 @@ public final class SpineController: NSObject, ObservableObject {
     internal weak var renderer: SpineRenderer?
     private var externalAttachmentStore: [String: ExternalAttachmentHandle] = [:]
     public var slotTextureAnchors: [String: SpineSlotTextureAnchor] = [:]
+
+    /// Child skeletons embedded in-pass at an anchor slot, keyed by slot name.
+    public var slotSpineAnchors: [String: SpineSlotSpineAnchor] = [:]
 
     @Published
     public private(set) var isPlaying: Bool = true
@@ -252,6 +257,12 @@ extension SpineController: SpineRendererDataSource {
 
     func spineRenderer(_ spineRenderer: SpineRenderer, needsUpdate delta: TimeInterval) {
         drawable?.update(delta: Float(delta))
+
+        // Advance every embedded child skeleton with the same delta so their
+        // animations stay in sync with the parent.
+        for anchor in slotSpineAnchors.values {
+            anchor.childDrawable.update(delta: Float(delta))
+        }
     }
 
     func isPlaying(_ spineRenderer: SpineRenderer) -> Bool {
@@ -290,20 +301,81 @@ extension SpineController: SpineRendererDataSource {
             }
         }
 
+        var spineAnchorsBySlotIndex = [Int32: SpineSlotSpineAnchor]()
+
+        for anchor in slotSpineAnchors.values {
+            if let slot = skeleton.findSlot(anchor.slotName) {
+                spineAnchorsBySlotIndex[slot.data.index] = anchor
+            }
+        }
+
         while let command = current {
-            if let anchor = anchorsBySlotIndex[command.slotIndex] {
+            // Slot texture anchor: emit a single textured quad at the anchor bone's
+            // world position. Routed through `.embeddedSpine` so it shares the same
+            // vertex/texture-index draw path as embedded child skeletons. The texture
+            // was registered into the parent renderer at `setSlotTextureAnchor` time.
+            if let anchor = anchorsBySlotIndex[command.slotIndex],
+               let anchorSlot = skeleton.findSlot(anchor.slotName) {
+                let bone = anchorSlot.bone
+                let centerX = bone.appliedPose.worldX + anchor.offsetX
+                let centerY = bone.appliedPose.worldY + anchor.offsetY
+
+                let quad = Self.makeTexturedQuad(
+                    centerX: centerX,
+                    centerY: centerY,
+                    width: anchor.width,
+                    height: anchor.height
+                )
+
                 items.append(
-                    .externalTexture(
-                        SpineExternalTexture(
+                    .embeddedSpine(
+                        SpineEmbeddedDraw(
                             anchorSlotIndex: command.slotIndex,
-                            texture: anchor.texture,
-                            width: anchor.width,
-                            height: anchor.height,
-                            offsetX: anchor.offsetX,
-                            offsetY: anchor.offsetY
+                            vertices: quad,
+                            textureIndex: anchor.textureIndex,
+                            blendMode: .normal
                         )
                     )
                 )
+            }
+
+            // Embed a child skeleton at this slot. Each child render command's
+            // vertices are transformed from child-skeleton space into parent
+            // skeleton space around the anchor bone's current world position,
+            // scaled by `scale`. The child's texture index was baked into the
+            // command when its atlas pages were registered with the renderer.
+            if let spineAnchor = spineAnchorsBySlotIndex[command.slotIndex],
+               let anchorSlot = skeleton.findSlot(spineAnchor.slotName) {
+                let bone = anchorSlot.bone
+                let anchorX = bone.appliedPose.worldX + spineAnchor.offsetX
+                let anchorY = bone.appliedPose.worldY + spineAnchor.offsetY
+
+                var childCommand = spineAnchor.childDrawable.skeletonDrawable.renderUnbatched()
+
+                while let child = childCommand {
+                    var vertices = Array(child.getVertices())
+
+                    for i in vertices.indices {
+                        let position = vertices[i].position
+                        vertices[i].position = SIMD2<Float>(
+                            anchorX + position.x * spineAnchor.scale,
+                            anchorY + position.y * spineAnchor.scale
+                        )
+                    }
+
+                    items.append(
+                        .embeddedSpine(
+                            SpineEmbeddedDraw(
+                                anchorSlotIndex: command.slotIndex,
+                                vertices: vertices,
+                                textureIndex: Int(bitPattern: child.texture),
+                                blendMode: child.blendMode
+                            )
+                        )
+                    )
+
+                    childCommand = child.next
+                }
             }
 
             items.append(.spine(command))
@@ -311,6 +383,46 @@ extension SpineController: SpineRendererDataSource {
         }
 
         return items
+    }
+
+    /// Builds two triangles (6 vertices) for a texture quad centered at
+    /// `(centerX, centerY)` in skeleton space, sized `width` x `height`. UVs are
+    /// v-flipped so the image renders upright in Spine's y-up coordinate system.
+    /// Vertex color is opaque white and bleach is 0 so the texture renders untinted.
+    private static func makeTexturedQuad(
+        centerX: Float,
+        centerY: Float,
+        width: Float,
+        height: Float
+    ) -> [SpineVertex] {
+        let halfW = width / 2
+        let halfH = height / 2
+
+        let left = centerX - halfW
+        let right = centerX + halfW
+        let bottom = centerY - halfH
+        let top = centerY + halfH
+
+        let white = simd_float4(1, 1, 1, 1)
+
+        func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float) -> SpineVertex {
+            SpineVertex(
+                position: simd_float2(x, y),
+                color: white,
+                uv: simd_float2(u, v),
+                bleach: 0
+            )
+        }
+
+        let topLeft = vertex(left, top, 0, 0)
+        let topRight = vertex(right, top, 1, 0)
+        let bottomLeft = vertex(left, bottom, 0, 1)
+        let bottomRight = vertex(right, bottom, 1, 1)
+
+        return [
+            topLeft, bottomLeft, topRight,
+            topRight, bottomLeft, bottomRight,
+        ]
     }
 }
 
@@ -1162,10 +1274,16 @@ extension SpineController {
 
 }
 
-// MARK: Modify Slot Order
+// MARK: Slot Texture Anchor
+
+/// Describes a static texture pinned to an anchor slot of the skeleton. The image
+/// is registered into the parent renderer's texture array once and rendered as a
+/// quad at the anchor bone's world position, z-ordered with the anchor slot in the
+/// skeleton's draw order. Shares the renderer's vertex/texture-index draw path with
+/// embedded child skeletons.
 public final class SpineSlotTextureAnchor {
     public let slotName: String
-    public let texture: MTLTexture
+    public let textureIndex: Int
     public let width: Float
     public let height: Float
     public let offsetX: Float
@@ -1173,14 +1291,14 @@ public final class SpineSlotTextureAnchor {
 
     public init(
         slotName: String,
-        texture: MTLTexture,
+        textureIndex: Int,
         width: Float,
         height: Float,
         offsetX: Float = 0,
         offsetY: Float = 0
     ) {
         self.slotName = slotName
-        self.texture = texture
+        self.textureIndex = textureIndex
         self.width = width
         self.height = height
         self.offsetX = offsetX
@@ -1197,11 +1315,185 @@ extension SpineController {
         return slot.data.index
     }
 
+    /// Pins a pre-registered texture (by parent-renderer texture index) to a slot.
     public func setSlotTextureAnchor(_ anchor: SpineSlotTextureAnchor) {
         slotTextureAnchors[anchor.slotName] = anchor
+    }
+
+    /// Loads an image from the bundle, registers it into the renderer's texture
+    /// array, and pins it to the given slot. Mirrors `embedSpine(atlasFileName:...)`.
+    ///
+    /// - Parameters:
+    ///   - imageName: Image name or path resolvable in `bundle`.
+    ///   - slotName: Anchor slot in the skeleton.
+    ///   - width/height: Quad size in skeleton units. Defaults to the image's point size.
+    ///   - offsetX/offsetY: Additional offset from the anchor bone's world position.
+    @MainActor
+    @discardableResult
+    public func setSlotTextureAnchor(
+        imageNamed imageName: String,
+        bundle: Bundle = .main,
+        atSlotNamed slotName: String,
+        width: Float? = nil,
+        height: Float? = nil,
+        offsetX: Float = 0,
+        offsetY: Float = 0
+    ) throws -> SpineSlotTextureAnchor {
+        guard let renderer else {
+            throw SpineExternalAttachmentError.rendererNotReady
+        }
+
+        guard skeleton.findSlot(slotName) != nil else {
+            throw SpineExternalAttachmentError.slotNotFound(slotName)
+        }
+
+        let image = try Self.loadImage(imageName, bundle: bundle)
+        let textureIndex = try renderer.registerTexture(image)
+
+        let resolvedWidth = width ?? Float(image.size.width)
+        let resolvedHeight = height ?? Float(image.size.height)
+
+        let anchor = SpineSlotTextureAnchor(
+            slotName: slotName,
+            textureIndex: textureIndex,
+            width: resolvedWidth,
+            height: resolvedHeight,
+            offsetX: offsetX,
+            offsetY: offsetY
+        )
+
+        slotTextureAnchors[slotName] = anchor
+
+        return anchor
     }
 
     public func removeSlotTextureAnchor(_ slotName: String) {
         slotTextureAnchors.removeValue(forKey: slotName)
     }
 }
+// MARK: Embed Child Spine
+
+/// Describes a child skeleton embedded in-pass at an anchor slot of the parent
+/// skeleton. The child is rendered inside the parent's render pass and is z-ordered
+/// against the anchor slot in the parent's draw order.
+public final class SpineSlotSpineAnchor {
+    public let slotName: String
+    public let childDrawable: SkeletonDrawableWrapper
+    public let scale: Float
+    public let offsetX: Float
+    public let offsetY: Float
+
+    /// Parent-renderer texture array indices for the child's atlas pages. Retained
+    /// so the registered textures stay alive for the lifetime of the anchor.
+    public internal(set) var pageTextureIndices: [Int]
+
+    public init(
+        slotName: String,
+        childDrawable: SkeletonDrawableWrapper,
+        scale: Float = 1,
+        offsetX: Float = 0,
+        offsetY: Float = 0,
+        pageTextureIndices: [Int] = []
+    ) {
+        self.slotName = slotName
+        self.childDrawable = childDrawable
+        self.scale = scale
+        self.offsetX = offsetX
+        self.offsetY = offsetY
+        self.pageTextureIndices = pageTextureIndices
+    }
+}
+
+extension SpineController {
+    /// Embeds a pre-loaded child skeleton at the given slot, rendering it in-pass.
+    ///
+    /// The child's atlas pages are registered into the parent renderer's texture
+    /// array and the child's atlas regions are rebound to those indices, so the
+    /// child's render commands carry valid texture indices for the parent renderer.
+    ///
+    /// - Returns: The embedded ``SpineSlotSpineAnchor``. Set an animation on
+    ///   `anchor.childDrawable.animationState` to animate the child.
+    @MainActor
+    @discardableResult
+    public func embedSpine(
+        childDrawable: SkeletonDrawableWrapper,
+        atSlotNamed slotName: String,
+        scale: Float = 1,
+        offsetX: Float = 0,
+        offsetY: Float = 0
+    ) throws -> SpineSlotSpineAnchor {
+        guard let renderer else {
+            throw SpineExternalAttachmentError.rendererNotReady
+        }
+
+        guard skeleton.findSlot(slotName) != nil else {
+            throw SpineExternalAttachmentError.slotNotFound(slotName)
+        }
+
+        let pageImages = childDrawable.atlasPages
+        let textureIndices = try renderer.registerTextures(pageImages)
+
+        try Self.bindAtlasPagesAndRegions(
+            atlas: childDrawable.atlas,
+            textureIndices: textureIndices
+        )
+
+        let anchor = SpineSlotSpineAnchor(
+            slotName: slotName,
+            childDrawable: childDrawable,
+            scale: scale,
+            offsetX: offsetX,
+            offsetY: offsetY,
+            pageTextureIndices: textureIndices
+        )
+
+        slotSpineAnchors[slotName] = anchor
+
+        return anchor
+    }
+
+    /// Loads a child skeleton from bundled files and embeds it at the given slot.
+    @MainActor
+    @discardableResult
+    public func embedSpine(
+        atlasFileName: String,
+        skeletonFileName: String,
+        bundle: Bundle = .main,
+        atSlotNamed slotName: String,
+        scale: Float = 1,
+        offsetX: Float = 0,
+        offsetY: Float = 0
+    ) async throws -> SpineSlotSpineAnchor {
+        let atlasAndPages = try await Atlas.fromBundle(atlasFileName, bundle: bundle)
+        let skeletonData = try await SkeletonData.fromBundle(
+            atlas: atlasAndPages.0,
+            skeletonFileName: skeletonFileName,
+            bundle: bundle
+        )
+
+        let childDrawable = try SkeletonDrawableWrapper(
+            atlas: atlasAndPages.0,
+            atlasPages: atlasAndPages.1,
+            skeletonData: skeletonData
+        )
+
+        return try embedSpine(
+            childDrawable: childDrawable,
+            atSlotNamed: slotName,
+            scale: scale,
+            offsetX: offsetX,
+            offsetY: offsetY
+        )
+    }
+
+    /// Removes the embedded child skeleton anchored at the given slot.
+    ///
+    /// - Note: The child's textures registered into the parent renderer are not
+    ///   reclaimed (the renderer only appends to its texture array), matching the
+    ///   existing external-attachment behaviour. The child drawable is not disposed
+    ///   here to avoid disposing while a frame referencing it may still be in flight.
+    public func removeSpineAnchor(_ slotName: String) {
+        slotSpineAnchors.removeValue(forKey: slotName)
+    }
+}
+

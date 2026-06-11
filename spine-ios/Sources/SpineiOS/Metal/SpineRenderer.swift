@@ -185,77 +185,93 @@ internal final class SpineRenderer: NSObject, MTKViewDelegate {
         }
     }
 
-private func draw(
-    renderItems: [SpineRenderItem],
-    renderEncoder: MTLRenderCommandEncoder,
-    in view: MTKView
-) {
-    var preparedSpineVertices = [[SpineVertex]]()
-    var requiredVerticesSize = 0
+    private func draw(
+        renderItems: [SpineRenderItem],
+        renderEncoder: MTLRenderCommandEncoder,
+        in view: MTKView
+    ) {
+        // First pass: prepare parent-spine vertices and compute the total buffer
+        // size needed for every item that writes into the vertex buffer.
+        // `.embeddedSpine` already carries pre-transformed vertices (embedded child
+        // skeletons and slot texture-anchor quads), so it only contributes to the
+        // size accounting here.
+        var preparedSpineVertices = [[SpineVertex]]()
+        var requiredVerticesSize = 0
 
-    for item in renderItems {
-        switch item {
-        case .spine(let command):
-            let vertices = Array(command.getVertices())
-            preparedSpineVertices.append(vertices)
+        for item in renderItems {
+            switch item {
+            case .spine(let command):
+                let vertices = Array(command.getVertices())
+                preparedSpineVertices.append(vertices)
 
-            requiredVerticesSize = alignedMetalBufferOffset(requiredVerticesSize)
-            requiredVerticesSize += MemoryLayout<SpineVertex>.stride * vertices.count
+                requiredVerticesSize = alignedMetalBufferOffset(requiredVerticesSize)
+                requiredVerticesSize += MemoryLayout<SpineVertex>.stride * vertices.count
 
-        case .externalTexture:
-            break
-        }
-    }
-
-    requiredVerticesSize = alignedMetalBufferOffset(requiredVerticesSize)
-
-    var vertexBuffer: MTLBuffer?
-
-    if requiredVerticesSize > 0 {
-        var buffer = buffers[currentBufferIndex]
-
-        if buffer.length < requiredVerticesSize {
-            increaseBuffersSize(to: requiredVerticesSize)
-            buffer = buffers[currentBufferIndex]
+            case .embeddedSpine(let draw):
+                requiredVerticesSize = alignedMetalBufferOffset(requiredVerticesSize)
+                requiredVerticesSize += MemoryLayout<SpineVertex>.stride * draw.vertices.count
+            }
         }
 
-        vertexBuffer = buffer
-    }
+        requiredVerticesSize = alignedMetalBufferOffset(requiredVerticesSize)
 
-    beginDraw(renderEncoder: renderEncoder)
+        var vertexBuffer: MTLBuffer?
 
-    var vertexBufferOffset = 0
-    var spineVertexIndex = 0
+        if requiredVerticesSize > 0 {
+            var buffer = buffers[currentBufferIndex]
 
-    for item in renderItems {
-        switch item {
-        case .spine(let command):
-            guard let vertexBuffer else {
-                continue
+            if buffer.length < requiredVerticesSize {
+                increaseBuffersSize(to: requiredVerticesSize)
+                buffer = buffers[currentBufferIndex]
             }
 
-            let vertices = preparedSpineVertices[spineVertexIndex]
-            spineVertexIndex += 1
+            vertexBuffer = buffer
+        }
 
-            vertexBufferOffset = alignedMetalBufferOffset(vertexBufferOffset)
+        beginDraw(renderEncoder: renderEncoder)
 
-            vertexBufferOffset = drawSpineCommand(
-                command,
-                vertices: vertices,
-                vertexBuffer: vertexBuffer,
-                vertexBufferOffset: vertexBufferOffset,
-                renderEncoder: renderEncoder
-            )
+        var vertexBufferOffset = 0
+        var spineVertexIndex = 0
 
-        case .externalTexture(let externalTexture):
-//            drawExternalTexture(
-//                externalTexture,
-//                renderEncoder: renderEncoder
-//            )
-            print("exteranl texture")
+        for item in renderItems {
+            switch item {
+            case .spine(let command):
+                guard let vertexBuffer else {
+                    continue
+                }
+
+                let vertices = preparedSpineVertices[spineVertexIndex]
+                spineVertexIndex += 1
+
+                vertexBufferOffset = alignedMetalBufferOffset(vertexBufferOffset)
+
+                vertexBufferOffset = drawSpineVertices(
+                    vertices,
+                    textureIndex: Int(bitPattern: command.texture),
+                    blendMode: command.blendMode,
+                    vertexBuffer: vertexBuffer,
+                    vertexBufferOffset: vertexBufferOffset,
+                    renderEncoder: renderEncoder
+                )
+
+            case .embeddedSpine(let draw):
+                guard let vertexBuffer else {
+                    continue
+                }
+
+                vertexBufferOffset = alignedMetalBufferOffset(vertexBufferOffset)
+
+                vertexBufferOffset = drawSpineVertices(
+                    draw.vertices,
+                    textureIndex: draw.textureIndex,
+                    blendMode: draw.blendMode,
+                    vertexBuffer: vertexBuffer,
+                    vertexBufferOffset: vertexBufferOffset,
+                    renderEncoder: renderEncoder
+                )
+            }
         }
     }
-}
 
 
     private func setTransform(bounds: CGRect, mode: SpineContentMode, alignment: SpineAlignment) {
@@ -304,52 +320,6 @@ private func draw(
         delegate?.spineRendererDidUpdate(self)
     }
 
-    // private func draw(
-    //     renderCommands: [RenderCommand],
-    //     renderEncoder: MTLRenderCommandEncoder,
-    //     in view: MTKView
-    // ) {
-    //     let commandVertices = renderCommands.map { renderCommand in
-    //         (renderCommand, Array(renderCommand.getVertices()))
-    //     }
-
-    //     var requiredVerticesSize = 0
-
-    //     for pair in commandVertices {
-    //         requiredVerticesSize = alignedMetalBufferOffset(requiredVerticesSize)
-    //         requiredVerticesSize += MemoryLayout<SpineVertex>.stride * pair.1.count
-    //     }
-
-    //     requiredVerticesSize = alignedMetalBufferOffset(requiredVerticesSize)
-
-    //     guard requiredVerticesSize > 0 else {
-    //         return
-    //     }
-
-    //     var vertexBuffer = buffers[currentBufferIndex]
-
-    //     if vertexBuffer.length < requiredVerticesSize {
-    //         increaseBuffersSize(to: requiredVerticesSize)
-    //         vertexBuffer = buffers[currentBufferIndex]
-    //     }
-
-    //     beginDraw(renderEncoder: renderEncoder)
-
-    //     var vertexBufferOffset = 0
-
-    //     for pair in commandVertices {
-    //         vertexBufferOffset = alignedMetalBufferOffset(vertexBufferOffset)
-
-    //         vertexBufferOffset = drawSpineCommand(
-    //             pair.0,
-    //             vertices: pair.1,
-    //             vertexBuffer: vertexBuffer,
-    //             vertexBufferOffset: vertexBufferOffset,
-    //             renderEncoder: renderEncoder
-    //         )
-    //     }
-    // }
-
     private func beginDraw(renderEncoder: MTLRenderCommandEncoder) {
         renderEncoder.setViewport(
             MTLViewport(
@@ -380,10 +350,16 @@ private func draw(
         return (value + alignment - 1) & ~(alignment - 1)
     }
 
+    /// Writes `vertices` into the shared vertex buffer at the aligned offset, binds
+    /// the pipeline state for `blendMode` and the texture at `textureIndex`, then
+    /// issues the draw. Shared by the parent `.spine` path (texture index read from
+    /// `RenderCommand`) and the `.embeddedSpine` path (texture index resolved when
+    /// the child atlas pages / anchor image were registered into this renderer).
     @discardableResult
-    private func drawSpineCommand(
-        _ renderCommand: RenderCommand,
-        vertices: [SpineVertex],
+    private func drawSpineVertices(
+        _ vertices: [SpineVertex],
+        textureIndex: Int,
+        blendMode: BlendMode,
         vertexBuffer: MTLBuffer,
         vertexBufferOffset: Int,
         renderEncoder: MTLRenderCommandEncoder
@@ -404,7 +380,7 @@ private func draw(
             memcpy(destination, baseAddress, verticesSize)
         }
 
-        guard let pipelineState = getPipelineState(blendMode: renderCommand.blendMode) else {
+        guard let pipelineState = getPipelineState(blendMode: blendMode) else {
             return alignedMetalBufferOffset(alignedOffset + verticesSize)
         }
 
@@ -415,8 +391,6 @@ private func draw(
             offset: alignedOffset,
             index: Int(SpineVertexInputIndexVertices.rawValue)
         )
-
-        let textureIndex = Int(bitPattern: renderCommand.texture)
 
         if textures.indices.contains(textureIndex) {
             renderEncoder.setFragmentTexture(

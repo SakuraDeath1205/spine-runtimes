@@ -1,17 +1,20 @@
 import Foundation
-import Metal
 import SpineSwift
+import SpineShadersStructs
 
 enum SpineRenderItem {
     case spine(RenderCommand)
-    case externalTexture(SpineExternalTexture)
+    case embeddedSpine(SpineEmbeddedDraw)
 }
 
-struct SpineExternalTexture {
+/// A batch of already-transformed vertices to draw with a resolved texture index.
+///
+/// Used both for embedded child skeletons (vertices transformed into parent space)
+/// and for slot texture anchors (a single textured quad at the anchor bone).
+struct SpineEmbeddedDraw {
     let anchorSlotIndex: Int32
-    let texture: MTLTexture
-    let width: Float
-    let height: Float
-    let offsetX: Float
-    let offsetY: Float
+    let vertices: [SpineVertex]
+    let textureIndex: Int
+    let blendMode: BlendMode
 }
+
